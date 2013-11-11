@@ -84,13 +84,14 @@ graphics.off()}
 	weights
 }
 
-if (FALSE) {
+if (TRUE) {
 	# let's subset the data...
 	z <- z[,c(1,5,9)]
+
 	#keep <- T <= 40
 	#keep <- c(1, 1+sort( sample.int(nrow(z)-1, size=round(nrow(z)/8)) ))
-	keep <- c(1, round(seq(2, nrow(z), len=round(nrow(z)/8))) )
-	z <- z[keep,]; d <- d[keep]; f <- f[keep]; T <- T[keep]
+	#keep <- c(1, round(seq(2, nrow(z), len=round(nrow(z)/8))) )
+	#z <- z[keep,]; d <- d[keep]; f <- f[keep]; T <- T[keep]
 }
 
 zstar <- sqrt(d) * z
@@ -115,8 +116,8 @@ Ls <- THE_L
 fits <- lapply(Ls, function(L) {
 	# what kind of knot scheme to use?
 	use_cknots <- FALSE
-	use_bs     <- FALSE
-	use_lin    <- TRUE
+	use_bs     <- TRUE
+	use_lin    <- FALSE
 
 	if (use_lin) {
 		#knots  <- c(min(f), 0.05, 0.10, seq(0.2, max(f), len=L-3))
@@ -139,10 +140,13 @@ print(summary(rowSums(ufw)))
 		cknots  <- c(0.1, seq(0.2, max(d)-0.5, len=L-5))
 		#cknots  <- c(0.1, seq(0.2, max(d), len=L-4)[-c(L-4)])
 		#weights <- bs(d, df=L, intercept=TRUE)
-		weights <- bs(f, knots=cknots, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
-		knots   <- d[apply(weights, 2, which.max)]
+		#weights <- bs(f, knots=cknots, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
+		#weights <- bs(f, knots=cknots, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
+		weights <- bs(f, df=L, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
+		knots   <- f[apply(weights, 2, which.max)]
 		uf      <- quantile(f, seq(0,1,length=100))
-		ufw     <- bs(uf, knots=cknots, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
+		#ufw     <- bs(uf, knots=cknots, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
+		ufw     <- bs(uf, df=L, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
 	} else if (use_cknots) {
 		#cknots  <- c(min(d), 1, 2, 3, seq(4, max(d), len=L-4))  # put more dots near where function moves
 		#cknots  <- c(seq(min(d), 4, len=L-4), 5, 6, 7, max(d))  # put more dots near where function moves
@@ -186,26 +190,29 @@ print(summary(rowSums(ufw)))
 		omega <- array(NA, dim=c(L,k))
 		corrOmega <- array(NA, dim=c(L,k,k))
 		for (l in 1:L) {
+			omega[l,] <- runif(k, 0.5, 2)
 			corrOmega[l,,] <- rWishart(1, k+10, diag(k))[,,1]
-			omega[l,] <- diag(corrOmega[l,,])
 			corrOmega[l,,] <- cov2cor(corrOmega[l,,])
+			corrOmega[l,,] <- ifelse(corrOmega[l,,] < 0, 0, corrOmega[l,,])
 		}
 
-		list("omega"=omega, "corrOmega"=corrOmega, "alpha"=array(rnorm(n*L*k), dim=c(n,L,k)))
+		r <- list("omega"=omega, "corrOmega"=corrOmega, "alpha"=array(rnorm(n*L*k), dim=c(n,L,k)))
+
+		r
 	}
 
 	# run in parallel
-	Niter <- 1000
+	Niter <- 1250
 	Nchains <- 3
 	Ncores  <- 3
-	delta  <- 0.15; max_td <- 8
+	delta  <- 0.25; max_td <- 8
 
 	sflist <- mclapply(1:Nchains, mc.cores=Ncores,
 		function(i) {
-			tf <- stan(fit=fit2d, data=dat, iter=Niter, init=fn.rinits,
-			     delta=delta, max_treedepth=max_td,
-			     chains = 1, seed=03101983, chain_id=i, refresh=5, verbose=FALSE,
-			     pars=c("Dbar","corrSigma_f","Omega")
+			tf <- stan(fit=fit2d, data=dat, iter=Niter, #init=fn.rinits,
+			           #delta=delta, max_treedepth=max_td,
+			           chains = 1, seed=03101983, chain_id=i, refresh=5, verbose=FALSE,
+			           pars=c("Dbar","corrSigma_f","Omega")
 			)
 
 			tf
