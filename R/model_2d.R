@@ -195,13 +195,14 @@ print(summary(rowSums(ufw)))
 	}
 
 	# run in parallel
+	Niter <- 1000
 	Nchains <- 3
 	Ncores  <- 3
 	delta  <- 0.15; max_td <- 8
 
 	sflist <- mclapply(1:Nchains, mc.cores=Ncores,
 		function(i) {
-			tf <- stan(fit=fit2d, data=dat, iter=100, init=fn.rinits,
+			tf <- stan(fit=fit2d, data=dat, iter=Niter, init=fn.rinits,
 			     delta=delta, max_treedepth=max_td,
 			     chains = 1, seed=03101983, chain_id=i, refresh=5, verbose=FALSE,
 			     pars=c("Dbar","corrSigma_f","Omega")
