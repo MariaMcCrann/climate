@@ -8,8 +8,8 @@ data {
 	vector[L]     weights[n];   // weight to each cov mat
 	int           i_max_w[n];   // index of max weight
 
-	int<lower=0>  Nud;        // how many unique d_i do we have?
-	vector[L]     udw[Nud];   // weights for the unique Zstar
+	int<lower=0>  Nuf;        // how many unique d_i do we have?
+	vector[L]     ufw[Nuf];   // weights for the unique Zstar
 }
 
 transformed data {
@@ -28,7 +28,7 @@ transformed data {
 	for (i in 1:n)
 		max_w[i] <- weights[i,i_max_w[i]];
 
-	print("n = ", n, ", k = ", k, ", L = ", L, ", Nud = ", Nud);
+	print("n = ", n, ", k = ", k, ", L = ", L, ", Nuf = ", Nuf);
 }
 
 parameters {
@@ -63,21 +63,21 @@ model {
 }
 
 generated quantities {
-	matrix[k,k] corrSigma_d[Nud];
+	matrix[k,k] corrSigma_f[Nuf];
 
 	{
 		matrix[k,k] wSigma;
 
-		// construct Sigma(d) = sum_l w_l(d) Omega_l
-		for (i in 1:Nud) {
-			wSigma <- udw[i,1] * Omega[1];
+		// construct Sigma(f) = sum_l w_l(f) Omega_l
+		for (i in 1:Nuf) {
+			wSigma <- ufw[i,1] * Omega[1];
 
 			for (l in 2:L)
-				wSigma <- wSigma + udw[i,l] * Omega[l];
+				wSigma <- wSigma + ufw[i,l] * Omega[l];
 
 			for (j1 in 1:k) {
 				for (j2 in 1:k) {
-					corrSigma_d[i,j1,j2] <- wSigma[j1,j2] / sqrt( wSigma[j1,j1] * wSigma[j2,j2] );
+					corrSigma_f[i,j1,j2] <- wSigma[j1,j2] / sqrt( wSigma[j1,j1] * wSigma[j2,j2] );
 				}
 			}
 
