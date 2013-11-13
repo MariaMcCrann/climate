@@ -84,14 +84,14 @@ graphics.off()}
 	weights
 }
 
-if (TRUE) {
+if (FALSE) {
 	# let's subset the data...
 	z <- z[,c(1,5,9)]
 
 	#keep <- T <= 40
 	#keep <- c(1, 1+sort( sample.int(nrow(z)-1, size=round(nrow(z)/8)) ))
-	#keep <- c(1, round(seq(2, nrow(z), len=round(nrow(z)/8))) )
-	#z <- z[keep,]; d <- d[keep]; f <- f[keep]; T <- T[keep]
+	keep <- c(1, round(seq(2, nrow(z), len=round(nrow(z)/8))) )
+	z <- z[keep,]; d <- d[keep]; f <- f[keep]; T <- T[keep]
 }
 
 zstar <- sqrt(d) * z
@@ -202,7 +202,7 @@ print(summary(rowSums(ufw)))
 	}
 
 	# run in parallel
-	Niter <- 1250
+	Niter <- 500
 	Nchains <- 3
 	Ncores  <- 3
 	delta  <- 0.25; max_td <- 8
