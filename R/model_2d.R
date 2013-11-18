@@ -202,10 +202,10 @@ print(summary(rowSums(ufw)))
 	}
 
 	# run in parallel
-	Niter <- 500
+	Niter <- 1000
 	Nchains <- 3
 	Ncores  <- 3
-	delta  <- 0.25; max_td <- 8
+	delta  <- 0.45; max_td <- 6
 
 	sflist <- mclapply(1:Nchains, mc.cores=Ncores,
 		function(i) {
