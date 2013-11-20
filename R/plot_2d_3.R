@@ -11,7 +11,7 @@
 		plot(ud,corr_1_3[,1],
 			xlab="Grid Cells Apart",ylab="Correlation",
 			main=paste0("Correlation vs Grid Cell Distance, L=",L,"\n","DIC: ",round(DIC,1),", pD=",round(pD,1)),
-			type="l",lwd=2,col="blue",ylim=c(-0.5,1), xaxt='n',xlim=rev(range(ud)))   # GCM
+			type="l",lwd=2,col="blue",ylim=c(-0.5,1), xaxt='n',xlim=rev(range(ud)))   # BC
 
 			axis(1, at=d.samet[seq.samet], labels=rev(seq.samet))
 
@@ -19,7 +19,7 @@
 
 			# 95% intervals
 
-			# GCM
+			# BC
 			lines(ud,corr_1_3[,4],lwd=0.5,col="blue",lty=2)
 			lines(ud,corr_1_3[,8],lwd=0.5,col="blue",lty=2)
 
@@ -33,7 +33,7 @@
 				points(knots, rep(-0.5, length(knots)), col="red", pch=4, cex=1.5)
 			}
 
-			legend("topleft",c("GCM","RCM"),ncol=1,inset=0.05,col=c("blue","red"),lty=c(1,1))
+			legend("topleft",c("BC","RCM"),ncol=1,inset=0.05,col=c("blue","red"),lty=c(1,1))
 
 	graphics.off()
 
@@ -63,7 +63,7 @@
 		plot(ud,cond.corrs[1,],
 			xlab="Grid Cells Apart",ylab="Conditional Correlation",
 			main=paste0("Conditional Corr vs Grid Cell Distance, L=",L,"\n","DIC: ",round(DIC,1),", pD=",round(pD,1)),
-			type="l",lwd=2,col="blue",ylim=c(-0.5,1), xaxt='n',xlim=rev(range(ud)))   # GCM
+			type="l",lwd=2,col="blue",ylim=c(-0.5,1), xaxt='n',xlim=rev(range(ud)))   # BC
 
 			axis(1, at=d.samet[seq.samet], labels=rev(seq.samet))
 
@@ -75,7 +75,7 @@
 				points(knots, rep(-0.5, length(knots)), col="red", pch=4, cex=1.5)
 			}
 
-			legend("topleft",c("GCM given RCM","RCM given GCM"),ncol=1,inset=0.05,col=c("blue","red"),lty=c(1,1))
+			legend("topleft",c("BC given RCM","RCM given BC"),ncol=1,inset=0.05,col=c("blue","red"),lty=c(1,1))
 
 	graphics.off()
 

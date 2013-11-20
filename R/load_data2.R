@@ -21,7 +21,7 @@ n1<-nrow(lon)
 n2<-ncol(lat)
 nm<-9
 models<-c("NCEP","CRCM","ECP2","HRM3","MM5I","RCM3","WRFG","UDEL","CRU")
-type<-c("GCM","RCM","RCM","RCM","RCM","RCM","RCM","Data","Data")
+type<-c("BC","RCM","RCM","RCM","RCM","RCM","RCM","Data","Data")
 
 ##################################################
 #Put the data in array form
