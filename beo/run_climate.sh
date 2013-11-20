@@ -14,7 +14,7 @@ if [ "X$WC" = "X" ]; then
 fi
 
 IFILE="R/run_model2d.R"
-OFILE="output/L$L.out"
+OFILE="output/L${L}_${WC}.out"
 
 # read in profile
 . ~/.bash_profile
