@@ -22,25 +22,25 @@ print(p.samet)
 
 # plot original data
 if (FALSE) {
-#r <- range(temps[,,c(i.data,i.gcm,i.rcm)])
-r <- range(temps[,,1:9])
+#r <- range(cdata[,,c(i.data,i.gcm,i.rcm)])
+r <- range(cdata[,,1:9])
 #pdf("pdf/2d/data.pdf",height=2)
 Cairo("pdf/2d/data.png",type="png",pointsize=20,width=1024,height=900)
   par(bty="l")
   par(mfrow=c(3,3))
 	par(mar=c(2,2,3,5))
 
-  image.plot(tlon,tlat,temps[,,8],xlab="",ylab="",axes=F,main="UDEL Data",zlim=r); map("world",add=T)
-  image.plot(tlon,tlat,temps[,,9],xlab="",ylab="",axes=F,main="CRU Data",zlim=r); map("world",add=T)
-  image.plot(tlon,tlat,temps[,,1],xlab="",ylab="",axes=F,main="NCEP GCM",zlim=r); map("world",add=T)
+  image.plot(tlon,tlat,cdata[,,8],xlab="",ylab="",axes=F,main="UDEL Data",zlim=r); map("world",add=T)
+  image.plot(tlon,tlat,cdata[,,9],xlab="",ylab="",axes=F,main="CRU Data",zlim=r); map("world",add=T)
+  image.plot(tlon,tlat,cdata[,,1],xlab="",ylab="",axes=F,main="NCEP BC",zlim=r); map("world",add=T)
 
-  image.plot(tlon,tlat,temps[,,2],xlab="",ylab="",axes=F,main="CRCM RCM",zlim=r);   map("world",add=T)
-  image.plot(tlon,tlat,temps[,,3],xlab="",ylab="",axes=F,main="ECP2 RCM",zlim=r);   map("world",add=T)
-  image.plot(tlon,tlat,temps[,,4],xlab="",ylab="",axes=F,main="HRM3 RCM",zlim=r);   map("world",add=T)
+  image.plot(tlon,tlat,cdata[,,2],xlab="",ylab="",axes=F,main="CRCM RCM",zlim=r);   map("world",add=T)
+  image.plot(tlon,tlat,cdata[,,3],xlab="",ylab="",axes=F,main="ECP2 RCM",zlim=r);   map("world",add=T)
+  image.plot(tlon,tlat,cdata[,,4],xlab="",ylab="",axes=F,main="HRM3 RCM",zlim=r);   map("world",add=T)
 
-  image.plot(tlon,tlat,temps[,,5],xlab="",ylab="",axes=F,main="MM5I RCM",zlim=r);   map("world",add=T)
-  image.plot(tlon,tlat,temps[,,6],xlab="",ylab="",axes=F,main="RCM3 RCM",zlim=r);   map("world",add=T)
-  image.plot(tlon,tlat,temps[,,7],xlab="",ylab="",axes=F,main="WRFG RCM",zlim=r);   map("world",add=T)
+  image.plot(tlon,tlat,cdata[,,5],xlab="",ylab="",axes=F,main="MM5I RCM",zlim=r);   map("world",add=T)
+  image.plot(tlon,tlat,cdata[,,6],xlab="",ylab="",axes=F,main="RCM3 RCM",zlim=r);   map("world",add=T)
+  image.plot(tlon,tlat,cdata[,,7],xlab="",ylab="",axes=F,main="WRFG RCM",zlim=r);   map("world",add=T)
 graphics.off()}
 
 # plot Zs
@@ -48,7 +48,7 @@ if (FALSE) {pdf("pdf/2d/data_trans.pdf")
   par(bty="l")
   par(mfrow=c(1,3))
   image.plot(tlon,tlat,Z[,,i.data],xlab="",ylab="",axes=F,main="Data"); map("world",add=T)
-  image.plot(tlon,tlat,Z[,,i.gcm],xlab="",ylab="",axes=F,main="GCM");   map("world",add=T)
+  image.plot(tlon,tlat,Z[,,i.gcm],xlab="",ylab="",axes=F,main="BC");   map("world",add=T)
   image.plot(tlon,tlat,Z[,,i.rcm],xlab="",ylab="",axes=F,main="RCM");   map("world",add=T)
 graphics.off()}
 
@@ -66,7 +66,7 @@ if (TRUE) {
 		#axis(1, at=d.samet[seq.samet], labels=period.samet)
 		points(knots, cor.dat[2,], col="red", type="l")
 		abline(h=0, lty=3)
-		legend("topleft",c("GCM","RCM"),ncol=1,inset=0.05,col=c("blue","red"),lty=c(1,1))
+		legend("topleft",c("BC","RCM"),ncol=1,inset=0.05,col=c("blue","red"),lty=c(1,1))
 	graphics.off()
 }
 
@@ -81,7 +81,7 @@ if (FALSE) {
 		axis(1, at=d.samet[seq.samet], labels=period.samet)
 		points(knots, cor.dat[2,], col="red", type="l")
 		abline(h=0, lty=3)
-		legend("topleft",c("GCM","RCM"),ncol=1,inset=0.05,col=c("blue","red"),lty=c(1,1))
+		legend("topleft",c("BC","RCM"),ncol=1,inset=0.05,col=c("blue","red"),lty=c(1,1))
 	graphics.off()
 }
 
@@ -97,7 +97,7 @@ if (TRUE) {
 
 	# data source 8
 	pdf("pdf/2d/data_z_corr_d8.pdf", height=7/2)
-		# GCM
+		# BC
 		plot(knots, cor.dat8[1,], col="blue", type="l", main="Empirical Marginal Correlations for UDEL Data",
 		     ylab="Correlation", xlab="Grid Cells per Cycle", xaxt="n", xlim=rev(range(knots)), ylim=c(-.3,1.25))
 			axis(1, at=f.samet[seq.samet], labels=p.samet[seq.samet])
@@ -110,12 +110,12 @@ if (TRUE) {
 		points(knots, cor.dat8[9,], col="black", type="l")
 
 		abline(h=0, lty=3)
-		legend("topleft",c("GCM","RCM","CRU"),ncol=3,inset=0.05,col=c("blue","red","black"),lty=c(1,1,1),lwd=2)
+		legend("topleft",c("BC","RCM","CRU"),ncol=3,inset=0.05,col=c("blue","red","black"),lty=c(1,1,1),lwd=2)
 	graphics.off()
 
 	# data source 9
 	pdf("pdf/2d/data_z_corr_d9.pdf", height=7/2)
-		# GCM
+		# BC
 		plot(knots, cor.dat9[1,], col="blue", type="l", main="Empirical Marginal Correlations for CRU Data",
 		     ylab="Correlation", xlab="Grid Cells per Cycle", xaxt="n", xlim=rev(range(knots)), ylim=c(-.3,1.25))
 			axis(1, at=f.samet[seq.samet], labels=p.samet[seq.samet])
@@ -128,7 +128,7 @@ if (TRUE) {
 		points(knots, cor.dat9[8,], col="black", type="l")
 
 		abline(h=0, lty=3)
-		legend("topleft",c("GCM","RCM","UDEL"),ncol=3,inset=0.05,col=c("blue","red","black"),lty=c(1,1,1),lwd=2)
+		legend("topleft",c("BC","RCM","UDEL"),ncol=3,inset=0.05,col=c("blue","red","black"),lty=c(1,1,1),lwd=2)
 	graphics.off()
 
 }

@@ -63,15 +63,15 @@ cat("Mean difference between M x Y and DCT:", mean(z1-z2),"\n")
 
 if (TRUE) { # work with data
 
-# let's get a column of summer temps to play with (these are west to east; rows are south to north)
+# let's get a column of summer cdata to play with (these are west to east; rows are south to north)
 index <- 50
 WE    <- TRUE   # use west to east or south to north?
 if (WE) {
-	temps <- SumTemp[,index,]
+	cdata <- SumTemp[,index,]
 	tlon  <- lon[,index]
 	tlat  <- lat[,index]
 } else {
-	temps <- SumTemp[index,,]
+	cdata <- SumTemp[index,,]
 	tlon  <- lon[index,]
 	tlat  <- lat[index,]
 }
@@ -81,23 +81,23 @@ n     <- length(tlon)
 if (FALSE) {
 pdf("pdf/data.pdf")
 	par(bty="l")
-  plot(1:n,temps[,9],xlab="Grid Cell",ylab="Temp",main="Data vs Models",
-		type="l",lwd=1,col="black",ylim=c(min(temps),max(temps)))   # data
-  for (i in 1:1) lines(1:n,temps[,i],lwd=2,col="blue")          # GCMs
-  for (i in 2:7) lines(1:n,temps[,i],lwd=0.5,col="red")         # RCMs
-  for (i in 8:8) lines(1:n,temps[,i],lwd=1,col="black")         # other data
+  plot(1:n,cdata[,9],xlab="Grid Cell",ylab="Temp",main="Data vs Models",
+		type="l",lwd=1,col="black",ylim=c(min(cdata),max(cdata)))   # data
+  for (i in 1:1) lines(1:n,cdata[,i],lwd=2,col="blue")          # BCs
+  for (i in 2:7) lines(1:n,cdata[,i],lwd=0.5,col="red")         # RCMs
+  for (i in 8:8) lines(1:n,cdata[,i],lwd=1,col="black")         # other data
 graphics.off()}
 
 # get Zs
 icar <- DCT1D(length(tlon))
-z <- icar$M %*% temps
+z <- icar$M %*% cdata
 
 # plot Zs
 if (FALSE) {
 pdf("pdf/data_trans.pdf")
 	par(bty="l")
   plot(icar$d,z[,9],xlab="Grid Cell",ylab="d",main="Data",type="l",lwd=2,col="black")   # data
-  lines(icar$d,z[,1],lwd=2,col="blue")   # GCM
+  lines(icar$d,z[,1],lwd=2,col="blue")   # BC
   lines(icar$d,z[,5],lwd=1,col="red")    # RCM
 graphics.off()}
 
@@ -110,7 +110,7 @@ if (FALSE) {pdf("pdf/corr.pdf")
 	par(bty="l")
 	plot(d, corrs[2,], xlab="d", ylab="correlation", type="p", pch=20, cex=1.0, col="black", ylim=c(-0.5,1))   # other data
 	for (i in 3:8) points(d, corrs[i,], pch=20, cex=1.0, col="red")   # RCMs
-	for (i in 9:9) points(d, corrs[i,], pch=20, cex=1.0, col="blue")  # GCM
+	for (i in 9:9) points(d, corrs[i,], pch=20, cex=1.0, col="blue")  # BC
 graphics.off()}
 
 # smooth correlations over d
@@ -124,7 +124,7 @@ if (FALSE) {pdf("pdf/corr_smooth.pdf")
 	par(bty="l")
 	plot(d, corrs[2,], xlab="d", ylab="correlation", type="l", lwd=1.0, col="black", ylim=c(-0.5,1))   # other data
 	for (i in 3:8) lines(d, corrs[i,], pch=20, lwd=1.0, col="red")   # RCMs
-	for (i in 9:9) lines(d, corrs[i,], pch=20, lwd=2.0, col="blue")  # GCM
+	for (i in 9:9) lines(d, corrs[i,], pch=20, lwd=2.0, col="blue")  # BC
 graphics.off()}
 if (FALSE) {pdf("pdf/corr_smooth.pdf")
 	par(bty="l")
@@ -135,7 +135,7 @@ if (FALSE) {pdf("pdf/corr_smooth.pdf")
 		ks <- ksmooth(d, corrs[i,], "normal", bandwidth=bw)
 		lines(ks$x, ks$y, lwd=1.0, col="red")
 	}
-	for (i in 9:9) { # GCM
+	for (i in 9:9) { # BC
 		ks <- ksmooth(d, corrs[i,], "normal", bandwidth=bw)
 		lines(ks$x, ks$y, lwd=2.0, col="blue")
 	}

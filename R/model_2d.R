@@ -9,20 +9,20 @@ library(splines)
 source("R/plot_2d.R")
 source("R/load_data2.R")
 
-temps <- SumTemp
+cdata <- SumTemp
 tlon  <- lon
 tlat  <- lat
-n1    <- nrow(temps)
-n2    <- ncol(temps)
+n1    <- nrow(cdata)
+n2    <- ncol(cdata)
 
 # plot this data
 if (FALSE) {pdf("pdf/2d/data.pdf")
 	par(bty="l")
 	par(mfrow=c(2,2))
-	image.plot(tlon,tlat,temps[,,9],xlab="",ylab="",axes=F,main="Data");   map("world",add=T)
-	image.plot(tlon,tlat,temps[,,1],xlab="",ylab="",axes=F,main="GCM");    map("world",add=T)
-	image.plot(tlon,tlat,temps[,,2],xlab="",ylab="",axes=F,main="RCM(2)"); map("world",add=T)
-	image.plot(tlon,tlat,temps[,,6],xlab="",ylab="",axes=F,main="RCM(6)"); map("world",add=T)
+	image.plot(tlon,tlat,cdata[,,9],xlab="",ylab="",axes=F,main="Data");   map("world",add=T)
+	image.plot(tlon,tlat,cdata[,,1],xlab="",ylab="",axes=F,main="BC");    map("world",add=T)
+	image.plot(tlon,tlat,cdata[,,2],xlab="",ylab="",axes=F,main="RCM(2)"); map("world",add=T)
+	image.plot(tlon,tlat,cdata[,,6],xlab="",ylab="",axes=F,main="RCM(6)"); map("world",add=T)
 graphics.off()}
 
 # plot Zs
@@ -30,7 +30,7 @@ if (FALSE) {pdf("pdf/2d/data_trans.pdf")
 	par(bty="l")
 	par(mfrow=c(2,2))
   image.plot(tlon,tlat,Z[,,9],xlab="",ylab="",axes=F,main="Data")
-  image.plot(tlon,tlat,Z[,,1],xlab="",ylab="",axes=F,main="GCM")
+  image.plot(tlon,tlat,Z[,,1],xlab="",ylab="",axes=F,main="BC")
   image.plot(tlon,tlat,Z[,,2],xlab="",ylab="",axes=F,main="RCM(2)")
   image.plot(tlon,tlat,Z[,,6],xlab="",ylab="",axes=F,main="RCM(6)")
 graphics.off()}
@@ -257,13 +257,13 @@ print(summary(rowSums(ufw)))
 	# save fit
 	cat("Saving fitsum...\n")
 	if (use_lin) {
-		fname <- paste0("fitsums/fitsum_linL",L,".RData")
+		fname <- paste0("fitsums/fitsum_linL",L,"_",WHICH_CDAT,".RData")
 	} else if (use_bs) {
-		fname <- paste0("fitsums/fitsum_bsL",L,".RData")
+		fname <- paste0("fitsums/fitsum_bsL",L,"_",WHICH_CDAT,".RData")
 	} else if (use_cknots) {
-		fname <- paste0("fitsums/fitsum_cL",L,".RData")
+		fname <- paste0("fitsums/fitsum_cL",L,"_",WHICH_CDAT,".RData")
 	} else {
-		fname <- paste0("fitsums/fitsumL",L,".RData")
+		fname <- paste0("fitsums/fitsumL",L,"_",WHICH_CDAT,".RData")
 	}
 	save(L, fitsum, uf, knots, DIC, pD, file=fname)
 

@@ -141,11 +141,19 @@ done
 } # end trans test
 
 # which data is of interest?
-temps <- SumTemp
+if (!("WHICH_CDAT" %in% ls()) || WHICH_CDAT == "ST") {
+	cdata <- SumTemp
+} else if (WHICH_CDAT == "WT") {
+	cdata <- WinTemp
+} else if (WHICH_CDAT == "SP") {
+	cdata <- SumPrec
+} else if (WHICH_CDAT == "WP") {
+	cdata <- WinPrec
+}
 tlon  <- lon
 tlat  <- lat
-n1    <- nrow(temps)
-n2    <- ncol(temps)
+n1    <- nrow(cdata)
+n2    <- ncol(cdata)
 
 # get Zs
 icar1 <- DCT1D(n1)
@@ -165,7 +173,7 @@ P  <- 1/F
 
 Z <- array(NA, dim=c(n1,n2,9))
 sapply(1:9, function(i) {
-  Z[,,i] <<- icar1$M %*% temps[,,i] %*% t(icar2$M)
+  Z[,,i] <<- icar1$M %*% cdata[,,i] %*% t(icar2$M)
 })
 
 d <- as.vector(D)
