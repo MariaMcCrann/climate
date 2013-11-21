@@ -77,16 +77,6 @@
 
 }
 
-#d.samet <- D[row(D)==col(D)]
-#N.samet <- length(d.samet)
-#seq.samet <- ( c(1, 20, 30, 40, 50, 60, 70, 80, 100) )
-
-d.samet <- D[row(D)==col(D)]
-f.samet <- F[row(F)==col(F)]
-p.samet <- round(P[row(P)==col(P)],1)
-N.samet <- length(f.samet)
-seq.samet <- c(2, 15, 30, 40, 50, 60, 70, 80, 90, min(n1,n2))
-
 if (!("WHICH_CDAT" %in% ls())) {
 	stop("Missing data type")
 }

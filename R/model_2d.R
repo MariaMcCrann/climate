@@ -8,6 +8,7 @@ library(splines)
 
 source("R/plot_2d.R")
 source("R/load_data2.R")
+source("R/smooth_corr.R")
 
 cdata <- SumTemp
 tlon  <- lon
@@ -35,33 +36,6 @@ if (FALSE) {pdf("pdf/2d/data_trans.pdf")
   image.plot(tlon,tlat,Z[,,6],xlab="",ylab="",axes=F,main="RCM(6)")
 graphics.off()}
 
-"get_weights" <- function(d, L, knots) {
-	# construct weights
-
-	if (missing(knots)) {
-		#knots <- quantile(d, seq(0,1,length=L))
-		knots <- seq(min(d),max(d),length=L)
-	}
-
-	if (L > 1) {
-		sigma <- 0.5*max(d)/L
-
-		diffs <- sapply(d, function(i) {
-			i-knots
-		})
-
-		weights <- t(apply(diffs, 1, function(row) {
-			exp(-row^2/(2*sigma^2))
-		}))
-
-		weights <- apply(weights, 2, function(col) { col/sum(col) })
-	} else {
-		weights <- matrix(1, nrow=L, ncol=length(d))
-	}
-
-	list(w=t(weights), knots=knots)
-}
-
 "get_weights_linear" <- function(d, L, knots) {
 	if (length(knots) != L) {
 		stop("get_weights_linear(): Number of knots unequal to L")
@@ -84,9 +58,9 @@ graphics.off()}
 	weights
 }
 
-if (FALSE) {
+if (TRUE) {
 	# let's subset the data...
-	z <- z[,c(1,5,9)]
+	#z <- z[,c(1,5,9)]
 
 	#keep <- T <= 40
 	#keep <- c(1, 1+sort( sample.int(nrow(z)-1, size=round(nrow(z)/8)) ))
@@ -146,7 +120,8 @@ print(summary(rowSums(ufw)))
 		knots   <- f[apply(weights, 2, which.max)]
 		uf      <- quantile(f, seq(0,1,length=100))
 		#ufw     <- bs(uf, knots=cknots, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
-		ufw     <- bs(uf, df=L, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
+		#ufw     <- bs(uf, df=L, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
+		ufw     <- predict(weights, uf)
 	} else if (use_cknots) {
 		#cknots  <- c(min(d), 1, 2, 3, seq(4, max(d), len=L-4))  # put more dots near where function moves
 		#cknots  <- c(seq(min(d), 4, len=L-4), 5, 6, 7, max(d))  # put more dots near where function moves
@@ -201,16 +176,36 @@ print(summary(rowSums(ufw)))
 		r
 	}
 
+	# function to get initial values with fixed correlation
+	fn.finits <- function() {
+		omega <- array(NA, dim=c(L,k))
+		corrOmega <- array(NA, dim=c(L,k,k))
+		ests <- ls_estimates(sc, L)
+
+		for (l in 1:L) {
+			omega[l,] <- runif(k, 0.5, 2)
+
+			corrOmega[l,,] <- ests[[l]]
+		}
+
+		r <- list("omega"=omega, "corrOmega"=corrOmega, "alpha"=array(rnorm(n*L*k), dim=c(n,L,k)))
+print(round(r$corrOmega[1,,],3))
+print(round(r$corrOmega[L,,],3))
+
+		r
+	}
+
 	# run in parallel
-	Niter <- 1000
+	Niter <- 100
 	Nchains <- 3
 	Ncores  <- 3
-	delta  <- 0.45; max_td <- 6
+	delta  <- 0.35; max_td <- 6
 
 	sflist <- mclapply(1:Nchains, mc.cores=Ncores,
 		function(i) {
-			tf <- stan(fit=fit2d, data=dat, iter=Niter, #init=fn.rinits,
-			           #delta=delta, max_treedepth=max_td,
+			tf <- stan(fit=fit2d, data=dat, iter=Niter, init=fn.finits,
+			           #delta=delta,
+			           #max_treedepth=max_td,
 			           chains = 1, seed=03101983, chain_id=i, refresh=5, verbose=FALSE,
 			           pars=c("Dbar","corrSigma_f","Omega")
 			)

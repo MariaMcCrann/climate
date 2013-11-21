@@ -1,28 +1,16 @@
 library(Cairo)
-source("R/load_data2.R")
+
+if (!("cdata" %in% ls())) {
+	source("R/load_data2.R")
+}
 
 i.data <- 9
-i.gcm <- 1
+i.bc <- 1
 i.rcm <- 5
-
-# setup x-axis
-# - One move in t_i1 or t_i2 is a half-cycle move
-# - So total frequency omega_i = t_i1/2n_1 + t_i2/2n_2
-# - Hence period is 1/omega_i
-
-d.samet <- D[row(D)==col(D)]
-f.samet <- F[row(F)==col(F)]
-p.samet <- round(P[row(P)==col(P)],1)
-N.samet <- length(f.samet)
-#seq.samet <- c(2, 3, 4, 5, 10, 15, 20, 30, 40, 50, 60, 70, 80, 95, 100, min(n1,n2))
-seq.samet <- c(2, 15, 30, 40, 50, 60, 70, 80, 90, min(n1,n2))
-print(d.samet)
-print(f.samet)
-print(p.samet)
 
 # plot original data
 if (FALSE) {
-#r <- range(cdata[,,c(i.data,i.gcm,i.rcm)])
+#r <- range(cdata[,,c(i.data,i.bc,i.rcm)])
 r <- range(cdata[,,1:9])
 #pdf("pdf/2d/data.pdf",height=2)
 Cairo("pdf/2d/data.png",type="png",pointsize=20,width=1024,height=900)
@@ -48,7 +36,7 @@ if (FALSE) {pdf("pdf/2d/data_trans.pdf")
   par(bty="l")
   par(mfrow=c(1,3))
   image.plot(tlon,tlat,Z[,,i.data],xlab="",ylab="",axes=F,main="Data"); map("world",add=T)
-  image.plot(tlon,tlat,Z[,,i.gcm],xlab="",ylab="",axes=F,main="BC");   map("world",add=T)
+  image.plot(tlon,tlat,Z[,,i.bc],xlab="",ylab="",axes=F,main="BC");   map("world",add=T)
   image.plot(tlon,tlat,Z[,,i.rcm],xlab="",ylab="",axes=F,main="RCM");   map("world",add=T)
 graphics.off()}
 
@@ -59,7 +47,7 @@ if (TRUE) {
 	inc <- 0.10
 	knots <- seq(min(d), max(d), len=1000)
 	cor.dat <- sapply(1:length(knots), function(k) {
-		cor(z[d >= (knots[k]-inc)&d <= (knots[k]+inc),c(i.data,i.gcm,i.rcm)])[1,2:3]
+		cor(z[d >= (knots[k]-inc)&d <= (knots[k]+inc),c(i.data,i.bc,i.rcm)])[1,2:3]
 	})
 	pdf("pdf/2d/data_z_corr.pdf", height=7/2)
 		plot(knots, cor.dat[1,], col="blue", type="l", ylab="Correlation", xlab="Grid Cells per Cycle", xlim=rev(range(knots)))#, xaxt="n")
@@ -74,7 +62,7 @@ if (FALSE) {
 	inc <- 0.05
 	knots <- seq(min(F), max(F), len=1000)
 	cor.dat <- sapply(1:length(knots), function(k) {
-		cor(z[F >= (knots[k]-inc)&F <= (knots[k]+inc),c(i.data,i.gcm,i.rcm)])[1,2:3]
+		cor(z[F >= (knots[k]-inc)&F <= (knots[k]+inc),c(i.data,i.bc,i.rcm)])[1,2:3]
 	})
 	pdf("pdf/2d/data_z_corr.pdf", height=7/2)
 		plot(knots, cor.dat[1,], col="blue", type="l", ylab="Correlation", xlab="Grid Cells per Cycle", xlim=rev(range(knots)), xaxt="n")
@@ -110,7 +98,7 @@ if (TRUE) {
 		points(knots, cor.dat8[9,], col="black", type="l")
 
 		abline(h=0, lty=3)
-		legend("topleft",c("BC","RCM","CRU"),ncol=3,inset=0.05,col=c("blue","red","black"),lty=c(1,1,1),lwd=2)
+		legend("top",c("BC","RCM","CRU"),ncol=3,inset=0.02,col=c("blue","red","black"),lty=c(1,1,1),lwd=2)
 	graphics.off()
 
 	# data source 9
@@ -128,7 +116,7 @@ if (TRUE) {
 		points(knots, cor.dat9[8,], col="black", type="l")
 
 		abline(h=0, lty=3)
-		legend("topleft",c("BC","RCM","UDEL"),ncol=3,inset=0.05,col=c("blue","red","black"),lty=c(1,1,1),lwd=2)
+		legend("top",c("BC","RCM","UDEL"),ncol=3,inset=0.02,col=c("blue","red","black"),lty=c(1,1,1),lwd=2)
 	graphics.off()
 
 }

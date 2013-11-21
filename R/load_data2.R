@@ -185,3 +185,14 @@ zstar <- sqrt(d) * z
 t <- as.vector(T) + 1 # start at 1
 f <- as.vector(F)
 p <- as.vector(P)
+
+# setup x-axis for plotting
+# - One move in t_i1 or t_i2 is a half-cycle move
+# - So total frequency omega_i = t_i1/2n_1 + t_i2/2n_2
+# - Hence period is 1/omega_i
+d.samet <- D[row(D)==col(D)]
+f.samet <- F[row(F)==col(F)]
+p.samet <- round(P[row(P)==col(P)],1)
+N.samet <- length(f.samet)
+#seq.samet <- c(2, 3, 4, 5, 10, 15, 20, 30, 40, 50, 60, 70, 80, 95, 100, min(n1,n2))
+seq.samet <- c(2, 15, 30, 40, 50, 60, min(n1, n2))
