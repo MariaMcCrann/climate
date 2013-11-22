@@ -141,7 +141,11 @@ done
 } # end trans test
 
 # which data is of interest?
-if (!("WHICH_CDAT" %in% ls()) || WHICH_CDAT == "ST") {
+if (!("WHICH_CDAT" %in% ls())) {
+	WHICH_CDAT <- "ST"
+}
+
+if (WHICH_CDAT == "ST") {
 	cdata <- SumTemp
 } else if (WHICH_CDAT == "WT") {
 	cdata <- WinTemp
