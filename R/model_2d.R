@@ -58,7 +58,7 @@ graphics.off()}
 	weights
 }
 
-if (TRUE) {
+if (FALSE) {
 	# let's subset the data...
 	#z <- z[,c(1,5,9)]
 
@@ -196,7 +196,7 @@ print(round(r$corrOmega[L,,],3))
 	}
 
 	# run in parallel
-	Niter <- 100
+	Niter <- 1000
 	Nchains <- 3
 	Ncores  <- 3
 	delta  <- 0.35; max_td <- 6
