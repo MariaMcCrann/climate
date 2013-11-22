@@ -171,16 +171,26 @@ T  <- T1+T2
 F  <- sqrt( (T1/(2*n1))^2 + (T2/(2*n2))^2 )
 P  <- 1/F
 
-Z <- array(NA, dim=c(n1,n2,9))
-sapply(1:9, function(i) {
-  Z[,,i] <<- icar1$M %*% cdata[,,i] %*% t(icar2$M)
-})
-
+# set z for each data type
 d <- as.vector(D)
-z <- matrix(NA, nrow=n1*n2, ncol=9)
-sapply(1:9, function(i) {
-  z[,i] <<- as.vector(Z[,,i])
-})
+
+# current
+Z <- array(NA, dim=c(n1,n2,9)); sapply(1:9, function(i) { Z[,,i] <<- icar1$M %*% cdata[,,i] %*% t(icar2$M) })
+z <- matrix(NA, nrow=n1*n2, ncol=9); sapply(1:9, function(i) { z[,i] <<- as.vector(Z[,,i]) })
+
+# summer temp
+Z.ST <- array(NA, dim=c(n1,n2,9)); sapply(1:9, function(i) { Z.ST[,,i] <<- icar1$M %*% SumTemp[,,i] %*% t(icar2$M) })
+z.ST <- matrix(NA, nrow=n1*n2, ncol=9); sapply(1:9, function(i) { z.ST[,i] <<- as.vector(Z.ST[,,i]) })
+# summer precip
+Z.SP <- array(NA, dim=c(n1,n2,9)); sapply(1:9, function(i) { Z.SP[,,i] <<- icar1$M %*% SumPrec[,,i] %*% t(icar2$M) })
+z.SP <- matrix(NA, nrow=n1*n2, ncol=9); sapply(1:9, function(i) { z.SP[,i] <<- as.vector(Z.SP[,,i]) })
+# winter temp
+Z.WT <- array(NA, dim=c(n1,n2,9)); sapply(1:9, function(i) { Z.WT[,,i] <<- icar1$M %*% WinTemp[,,i] %*% t(icar2$M) })
+z.WT <- matrix(NA, nrow=n1*n2, ncol=9); sapply(1:9, function(i) { z.WT[,i] <<- as.vector(Z.WT[,,i]) })
+# winter precip
+Z.WP <- array(NA, dim=c(n1,n2,9)); sapply(1:9, function(i) { Z.WP[,,i] <<- icar1$M %*% WinPrec[,,i] %*% t(icar2$M) })
+z.WP <- matrix(NA, nrow=n1*n2, ncol=9); sapply(1:9, function(i) { z.WP[,i] <<- as.vector(Z.WP[,,i]) })
+
 zstar <- sqrt(d) * z
 t <- as.vector(T) + 1 # start at 1
 f <- as.vector(F)

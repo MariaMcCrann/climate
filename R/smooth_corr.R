@@ -3,8 +3,7 @@ if (!("cdata" %in% ls())) {
 }
 
 # smooth correlations
-"smooth_corr" <- function() {
-	inc <- 0.005
+"smooth_corr" <- function(z, inc=0.005) {
 	knots <- seq(min(f), max(f), len=(max(f)-min(f))/inc)
 
 	cor <- vector("list", 9)
@@ -79,7 +78,7 @@ if (!("cdata" %in% ls())) {
 }
 
 # smooth correlations
-sc <- smooth_corr()
+sc <- smooth_corr(z)
 
 if (TRUE) {
 	# test least squares estimates
