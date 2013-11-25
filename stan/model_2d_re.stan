@@ -78,7 +78,7 @@ model {
 }
 
 generated quantities {
-	matrix[k,k] corrSigma_f[Nuf];
+//	matrix[k,k] corrSigma_f[Nuf];
 	real Dbar;
 
 	{
@@ -86,6 +86,7 @@ generated quantities {
 		vector[n] dic;
 		vector[k] mu_k;
 
+/*
 		// construct Sigma(f) = sum_l w_l(j) Omega_l
 		for (i in 1:Nuf) {
 			wSigma <- ufw[i,1] * Omega[1];
@@ -100,6 +101,7 @@ generated quantities {
 			}
 
 		}
+*/
 
 		// compute Dbar
 		dic[1] <- 0.0;

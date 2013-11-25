@@ -79,7 +79,7 @@ if (FALSE) {
 	# compile once...
 	weights <- get_weights(f, 1)$w; max_w <- rep(1, length(f)); i_max_w <- max_w; uf <- quantile(f, seq(0,1,length=10)); ufw <- get_weights(uf, 1)$w
 	dat = list(n=n, k=k, Zstar=zstar, L=1, weights=weights, i_max_w=i_max_w, Nuf=length(uf), ufw=ufw)
-	fit2d <- stan(file = 'stan/model_2d.stan', data = dat, iter = 10, chains = 1,pars="Omega");
+	fit2d <- stan(file = 'stan/model_2d_re.stan', data = dat, iter = 10, chains = 1,pars="Omega");
 	save(fit2d, file="fit2d.RData");
 	done
 } else {
@@ -196,17 +196,17 @@ print(round(r$corrOmega[L,,],3))
 	}
 
 	# run in parallel
-	Niter <- 500
+	Niter <- 3000
 	Nchains <- 3
 	Ncores  <- 3
-	delta  <- 0.35; max_td <- 8
+	delta  <- 0.25; max_td <- 6
 
 	sflist <- mclapply(1:Nchains, mc.cores=Ncores,
 		function(i) {
 			tf <- stan(fit=fit2d, data=dat, iter=Niter, #init=fn.finits,
-			           #control=list(adapt_delta=delta, max_treedepth=max_td),
-			           control=list(max_treedepth=max_td),
-			           chains = 1, seed=03101983, chain_id=i, refresh=1, verbose=FALSE,
+			           control=list(adapt_delta=delta, max_treedepth=max_td),
+			           #control=list(max_treedepth=max_td),
+			           chains = 1, seed=03101983, chain_id=i, refresh=5, verbose=FALSE,
 			           #pars=c("Dbar","corrSigma_f","Omega")
 			           pars=c("Dbar","Omega")
 			)
