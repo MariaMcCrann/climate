@@ -1,5 +1,6 @@
-require(fields)
-require(maps)
+library(fda)
+library(fields)
+library(maps)
 library(multicore)
 library(rstan); set_cppo("fast")
 library(MCMCpack)
@@ -58,14 +59,14 @@ graphics.off()}
 	weights
 }
 
-if (FALSE) {
+if (TRUE) {
 	# let's subset the data...
-	#z <- z[,c(1,5,9)]
+	z <- z[,c(1,5,9)]
 
 	#keep <- T <= 40
 	#keep <- c(1, 1+sort( sample.int(nrow(z)-1, size=round(nrow(z)/8)) ))
-	keep <- c(1, round(seq(2, nrow(z), len=round(nrow(z)/8))) )
-	z <- z[keep,]; d <- d[keep]; f <- f[keep]; T <- T[keep]
+	#keep <- c(1, round(seq(2, nrow(z), len=round(nrow(z)/8))) )
+	#z <- z[keep,]; d <- d[keep]; f <- f[keep]; T <- T[keep]
 }
 
 zstar <- sqrt(d) * z
@@ -111,17 +112,46 @@ print(summary(rowSums(ufw)))
 		#bsknots  <- seq(min(f),max(f),len=L-3)[-c(1,L-3)]
 		#weights <- bs(d, knots=bsknots, intercept=TRUE)
 		if (L < 4) { stop("B-splines require L > 3\n") }
-		cknots  <- c(0.1, seq(0.2, max(d)-0.5, len=L-5))
+		#cknots  <- c(0.1, seq(0.2, max(d)-0.5, len=L-5))
+		cknots  <- seq(min(f), max(f), len=L-2)[-c(1,L-2)]
+
 		#cknots  <- c(0.1, seq(0.2, max(d), len=L-4)[-c(L-4)])
 		#weights <- bs(d, df=L, intercept=TRUE)
 		#weights <- bs(f, knots=cknots, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
 		#weights <- bs(f, knots=cknots, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
-		weights <- bs(f, df=L, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
-		knots   <- f[apply(weights, 2, which.max)]
+
 		uf      <- quantile(f, seq(0,1,length=100))
+		if (FALSE) { # specify DF
+			weights <- bs(f, df=L, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
+			knots   <- f[apply(weights, 2, which.max)]
+			ufw     <- predict(weights, uf)
+		} else if (FALSE) { # specify own internal knots
+			weights <- bs(f, knots=cknots, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
+			knots   <- cknots
+			ufw     <- predict(weights, uf)
+		} else { # use FDA package w/ cubic b-splines (norder=4)
+			Bspline.basis <- create.bspline.basis(c(min(f),max(f)),norder=4,nbasis=L)
+			knots <- knots(Bspline.basis)
+			weights <- getbasismatrix(f, Bspline.basis, nderiv=0)
+			ufw     <- getbasismatrix(uf, Bspline.basis, nderiv=0)
+		}
 		#ufw     <- bs(uf, knots=cknots, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
 		#ufw     <- bs(uf, df=L, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
-		ufw     <- predict(weights, uf)
+
+if (FALSE) {
+		# capture which are non-zero
+		nz <- apply(weights, 1, function(x){ which(x!=0) })
+print(sum(weights==0));done
+print(summary( sapply(1:length(nz), function(i){ length(nz[[i]]) }) ))
+print(class(nz))
+print(head(nz))
+print(head(uf))
+print(head(ufw))
+print(cknots)
+print(sum(weights[,1]!=0))
+print(summary(weights[ weights[,1]!=0, 1]))
+done
+}
 	} else if (use_cknots) {
 		#cknots  <- c(min(d), 1, 2, 3, seq(4, max(d), len=L-4))  # put more dots near where function moves
 		#cknots  <- c(seq(min(d), 4, len=L-4), 5, 6, 7, max(d))  # put more dots near where function moves
@@ -196,7 +226,7 @@ print(round(r$corrOmega[L,,],3))
 	}
 
 	# run in parallel
-	Niter <- 3000
+	Niter <- 1000
 	Nchains <- 3
 	Ncores  <- 3
 	delta  <- 0.25; max_td <- 6
@@ -204,7 +234,7 @@ print(round(r$corrOmega[L,,],3))
 	sflist <- mclapply(1:Nchains, mc.cores=Ncores,
 		function(i) {
 			tf <- stan(fit=fit2d, data=dat, iter=Niter, #init=fn.finits,
-			           control=list(adapt_delta=delta, max_treedepth=max_td),
+			           #control=list(adapt_delta=delta, max_treedepth=max_td),
 			           #control=list(max_treedepth=max_td),
 			           chains = 1, seed=03101983, chain_id=i, refresh=5, verbose=FALSE,
 			           #pars=c("Dbar","corrSigma_f","Omega")
