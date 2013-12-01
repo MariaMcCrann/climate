@@ -65,8 +65,8 @@ if (TRUE) {
 
 	#keep <- T <= 40
 	#keep <- c(1, 1+sort( sample.int(nrow(z)-1, size=round(nrow(z)/8)) ))
-	#keep <- c(1, round(seq(2, nrow(z), len=round(nrow(z)/8))) )
-	#z <- z[keep,]; d <- d[keep]; f <- f[keep]; T <- T[keep]
+	keep <- c(1, round(seq(2, nrow(z), len=round(nrow(z)/8))) )
+	z <- z[keep,]; d <- d[keep]; f <- f[keep]; T <- T[keep]
 }
 
 zstar <- sqrt(d) * z
@@ -331,11 +331,11 @@ if (FALSE) {
 			}
 		}
 
-		#ll1 <- -2 * ( -0.5*k * log(2*pi) -0.5 * log( det(i_L %*% t(i_L)) ) -0.5*t(dat$Zstar[i,]) %*% chol2inv( i_L ) %*% dat$Zstar[i,] )
-		ll2 <- k*log(2*pi) +2*sum(log(diag(i_L))) +t(dat$Zstar[i,]) %*% chol2inv( i_L ) %*% dat$Zstar[i,]
+		#ll1 <- -2 * ( -0.5*k * log(2*pi) -0.5 * log( det(i_L %*% t(i_L)) ) -0.5*t(dat$Zstar[i,]) %*% solve( i_L %*% t(i_L) ) %*% dat$Zstar[i,] )
+		ll2 <- k*log(2*pi) +2*sum(log(diag(i_L))) +t(dat$Zstar[i,]) %*% chol2inv( t(i_L) ) %*% dat$Zstar[i,]
 #if (i <= 5) print(c(ll1,ll2))
 
-if (i < 5) print(ll2)
+#if (i < 5) print(ll2)
 
 		#ll1
 		ll2
