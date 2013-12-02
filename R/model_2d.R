@@ -76,7 +76,7 @@ n  <- nrow(z)
 k  <- ncol(z)
 Nt <- max(T)
 
-if (TRUE) {
+if (FALSE) {
 	# compile once...
 	weights <- get_weights(f, 1)$w; max_w <- rep(1, length(f)); i_max_w <- max_w; uf <- quantile(f, seq(0,1,length=10)); ufw <- get_weights(uf, 1)$w
 	dat <- list(
@@ -131,7 +131,7 @@ print(summary(rowSums(ufw)))
 			weights <- bs(f, df=L, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
 			knots   <- f[apply(weights, 2, which.max)]
 			ufw     <- predict(weights, uf)
-		} else if (TRUE) { # specify own internal knots
+		} else if (FALSE) { # specify own internal knots
 			#weights <- bs(f, knots=cknots, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
 			bsf <- bs(f, knots=cknots, intercept=FALSE, Boundary.knots=c(min(f),max(f)))
 			weights <- cbind(1, bsf)
@@ -261,9 +261,9 @@ print(round(r$corrOmega[L,,],3))
 	# run in parallel
 	Niter <- 100
 	if (L == 5)  Niter <- 500
-	if (L == 10) Niter <- 750
-	if (L == 15) Niter <- 1000
-	if (L == 20) Niter <- 1500
+	if (L == 10) Niter <- 500
+	if (L == 15) Niter <- 750
+	if (L == 20) Niter <- 750
 	Nchains <- 3
 	Ncores  <- 3
 	delta  <- 0.35; max_td <- 8
@@ -359,6 +359,8 @@ if (FALSE) {
 	DIC <- 0
 }
 
+	sp<-get_sampler_params(fit)
+
 	print(object.size(fit),units="Mb")
 	#rm("fit")
 
@@ -374,7 +376,7 @@ if (FALSE) {
 		fname <- paste0("L",L,"_",WHICH_CDAT,".RData")
 	}
 	save(L, fitsum, uf, ufw, knots, DIC, pD, file=paste0("fitsums/fitsum_",fname))
-	save(fit, file=paste0("fitsums/fit_",fname))
+	save(sp, file=paste0("fitsums/fit_",fname))
 
 	list(L=L, fit=fit, fitsum=fitsum, DIC=DIC, pD=pD)
 })
