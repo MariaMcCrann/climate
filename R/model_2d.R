@@ -59,14 +59,14 @@ graphics.off()}
 	weights
 }
 
-if (TRUE) {
+if (FALSE) {
 	# let's subset the data...
 	z <- z[,c(1,5,9)]
 
 	#keep <- T <= 40
 	#keep <- c(1, 1+sort( sample.int(nrow(z)-1, size=round(nrow(z)/8)) ))
-	#keep <- c(1, round(seq(2, nrow(z), len=round(nrow(z)/8))) )
-	#z <- z[keep,]; d <- d[keep]; f <- f[keep]; T <- T[keep]
+	keep <- c(1, round(seq(2, nrow(z), len=round(nrow(z)/8))) )
+	z <- z[keep,]; d <- d[keep]; f <- f[keep]; T <- T[keep]
 }
 
 zstar <- sqrt(d) * z
@@ -82,7 +82,7 @@ if (TRUE) {
 	dat <- list(
 		n=n, k=k, Zstar=zstar, L=1,
 		weights=weights, i_max_w=i_max_w,
-		nz_max=1, Nnz=rep(1, n), Mnz=matrix(1, nrow=n, ncol=1),
+		nz_max=1, Nnz=rep(1, n), Mnz=matrix(1, nrow=n, ncol=1), Wnz=matrix(1, nrow=n, ncol=1),
 		Nuf=length(uf), ufw=ufw,
 		krho=round(k*(k-1)/2)
 	)
@@ -156,9 +156,15 @@ print(summary(rowSums(ufw)))
 		Mnz <- matrix(0, nrow=length(nz), ncol=max(Nnz))
 		sapply(1:length(nz), function(i){ Mnz[i,1:Nnz[i]] <<- nz[[i]] })
 
-if (FALSE) {
+		# get non-zero weights
+		Wnz <- matrix(0, nrow=length(nz), ncol=max(Nnz))
+		sapply(1:length(nz), function(i){ Wnz[i,1:Nnz[i]] <<- weights[i,nz[[i]]] })
+
+if (TRUE) {
 print(head(Mnz))
 print(tail(Mnz))
+print(head(Wnz))
+print(tail(Wnz))
 
 print(class(Nnz))
 print(summary(Nnz))
@@ -185,7 +191,7 @@ print(knots)
 	krho <- round(k*(k-1)/2)
 	dat = list(n=n, k=k, Zstar=zstar,
 		L=L, weights=weights, i_max_w=i_max_w,
-		nz_max=max(Nnz), Nnz=Nnz, Mnz=Mnz,
+		nz_max=max(Nnz), Nnz=Nnz, Mnz=Mnz, Wnz=Wnz,
 		Nuf=length(uf), ufw=ufw,
 		krho=krho
 	)
