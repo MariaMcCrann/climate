@@ -74,12 +74,43 @@ model {
 }
 
 generated quantities {
-	real Dbar;
+	vector[k]   sdSigma_f[Nuf];
+	matrix[k,k] corrSigma_f[Nuf];
+	real        Dbar;
 
 	{
 		matrix[k,k] SigmaL;
+		matrix[k,k] Sigma;
 		vector[n] dic;
 		int c;
+
+		// construct variance vector and correlation matrix for Sigma(f_i)
+		for (i in 1:Nuf) {
+			for (k1 in 1:k) SigmaL[k1,k1] <- exp(dot_product(ufw[i], s[k1]));
+
+			c <- 1;
+			for (k1 in 1:(k-1)) {
+				for (k2 in (k1+1):k) {
+					SigmaL[k2,k1] <- dot_product(ufw[i], r[c]);
+					SigmaL[k1,k2] <- 0;
+					c <- c+1;
+				}
+			}
+
+			Sigma <- SigmaL * SigmaL';
+
+			for (k1 in 1:k) {
+				sdSigma_f[i,k1] <- sqrt(Sigma[k1,k1]);
+				corrSigma_f[i,k1,k1] <- 1;
+			}
+
+			for (k1 in 1:(k-1)) {
+				for (k2 in (k1+1):k) {
+					corrSigma_f[i,k1,k2] <- Sigma[k1,k2] / ( sdSigma_f[i,k1] * sdSigma_f[i,k2] );
+					corrSigma_f[i,k2,k1] <- corrSigma_f[i,k1,k2];
+				}
+			}
+		}
 
 		// compute Dbar
 		dic[1] <- 0.0;

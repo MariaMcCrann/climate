@@ -65,8 +65,8 @@ if (TRUE) {
 
 	#keep <- T <= 40
 	#keep <- c(1, 1+sort( sample.int(nrow(z)-1, size=round(nrow(z)/8)) ))
-	keep <- c(1, round(seq(2, nrow(z), len=round(nrow(z)/8))) )
-	z <- z[keep,]; d <- d[keep]; f <- f[keep]; T <- T[keep]
+	#keep <- c(1, round(seq(2, nrow(z), len=round(nrow(z)/8))) )
+	#z <- z[keep,]; d <- d[keep]; f <- f[keep]; T <- T[keep]
 }
 
 zstar <- sqrt(d) * z
@@ -76,7 +76,7 @@ n  <- nrow(z)
 k  <- ncol(z)
 Nt <- max(T)
 
-if (FALSE) {
+if (TRUE) {
 	# compile once...
 	weights <- get_weights(f, 1)$w; max_w <- rep(1, length(f)); i_max_w <- max_w; uf <- quantile(f, seq(0,1,length=10)); ufw <- get_weights(uf, 1)$w
 	dat <- list(
@@ -253,7 +253,11 @@ print(round(r$corrOmega[L,,],3))
 	}
 
 	# run in parallel
-	Niter <- 500
+	Niter <- 100
+	if (L == 5)  Niter <- 500
+	if (L == 10) Niter <- 750
+	if (L == 15) Niter <- 1000
+	if (L == 20) Niter <- 1500
 	Nchains <- 3
 	Ncores  <- 3
 	delta  <- 0.35; max_td <- 8
@@ -355,15 +359,16 @@ if (FALSE) {
 	# save fit
 	cat("Saving fitsum...\n")
 	if (use_lin) {
-		fname <- paste0("fitsums/fitsum_linL",L,"_",WHICH_CDAT,".RData")
+		fname <- paste0("linL",L,"_",WHICH_CDAT,".RData")
 	} else if (use_bs) {
-		fname <- paste0("fitsums/fitsum_bsL",L,"_",WHICH_CDAT,".RData")
+		fname <- paste0("bsL",L,"_",WHICH_CDAT,".RData")
 	} else if (use_cknots) {
-		fname <- paste0("fitsums/fitsum_cL",L,"_",WHICH_CDAT,".RData")
+		fname <- paste0("cL",L,"_",WHICH_CDAT,".RData")
 	} else {
-		fname <- paste0("fitsums/fitsumL",L,"_",WHICH_CDAT,".RData")
+		fname <- paste0("L",L,"_",WHICH_CDAT,".RData")
 	}
-	save(L, fit, fitsum, uf, ufw, knots, DIC, pD, file=fname)
+	save(L, fitsum, uf, ufw, knots, DIC, pD, file=paste0("fitsums/fitsum_",fname))
+	save(fit, file=paste0("fitsums/fit_",fname))
 
 	list(L=L, fit=fit, fitsum=fitsum, DIC=DIC, pD=pD)
 })
