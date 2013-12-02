@@ -375,8 +375,8 @@ if (FALSE) {
 	} else {
 		fname <- paste0("L",L,"_",WHICH_CDAT,".RData")
 	}
-	save(L, fitsum, uf, ufw, knots, DIC, pD, file=paste0("fitsums/fitsum_",fname))
-	save(sp, file=paste0("fitsums/fit_",fname))
+	save(L, fitsum, sp, uf, ufw, knots, DIC, pD, file=paste0("fitsums/fitsum_",fname))
+	#save(sp, file=paste0("fitsums/fit_",fname))
 
 	list(L=L, fit=fit, fitsum=fitsum, DIC=DIC, pD=pD)
 })
