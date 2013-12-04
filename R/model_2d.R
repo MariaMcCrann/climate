@@ -261,7 +261,7 @@ print(round(r$corrOmega[L,,],3))
 	# run in parallel
 	Niter <- 100
 	if (L == 5)  Niter <- 500
-	if (L == 10) Niter <- 500
+	if (L == 10) Niter <- 750
 	if (L == 15) Niter <- 750
 	if (L == 20) Niter <- 750
 	Nchains <- 3
