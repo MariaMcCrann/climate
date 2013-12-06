@@ -262,18 +262,18 @@ print(round(r$corrOmega[L,,],3))
 	Niter <- 100
 	if (L == 5)  Niter <- 500
 	if (L == 10) Niter <- 750
-	if (L == 15) Niter <- 750
-	if (L == 20) Niter <- 750
+	if (L == 15) Niter <- 1000
+	if (L == 20) Niter <- 1000
 	Nchains <- 3
 	Ncores  <- 3
-	delta  <- 0.35; max_td <- 8
+	delta  <- 0.8; max_td <- 8
 
 	sflist <- mclapply(1:Nchains, mc.cores=Ncores,
 		function(i) {
 			tf <- stan(fit=fit2d, data=dat, iter=Niter, #init=fn.uinits,
 			           #control=list(adapt_delta=delta, max_treedepth=max_td),
 			           #control=list(max_treedepth=max_td),
-			           control=list(adapt_delta=0.95), #, max_treedepth=max_td),
+			           control=list(adapt_delta=delta, max_treedepth=max_td),
 			           chains = 1, seed=311311, chain_id=i, refresh=5, verbose=TRUE#,
 			           #pars=c("Dbar","corrSigma_f","Omega")
 			           #pars=c("Dbar","Omega")
