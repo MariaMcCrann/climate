@@ -262,12 +262,12 @@ print(round(r$corrOmega[L,,],3))
 	Niter <- 100
 	if (L == 5)  Niter <- 500
 	if (L == 10) Niter <- 750
-	if (L == 15) Niter <- 1000
-	if (L == 20) Niter <- 1000
+	if (L == 15) Niter <- 2000
+	if (L == 20) Niter <- 2000
 	Nchains <- 3
 	Ncores  <- 3
-	if (WHICH_CDAT == "ST" | WHICH_CDAT == "WT") delta  <- 0.5; max_td <- 8
-	if (WHICH_CDAT == "SP" | WHICH_CDAT == "WP") delta  <- 0.8; max_td <- 8
+	if (WHICH_CDAT == "ST" | WHICH_CDAT == "WT") delta  <- 0.8; max_td <- 9
+	if (WHICH_CDAT == "SP" | WHICH_CDAT == "WP") delta  <- 0.8; max_td <- 9
 
 	sflist <- mclapply(1:Nchains, mc.cores=Ncores,
 		function(i) {
