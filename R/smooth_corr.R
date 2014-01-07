@@ -41,8 +41,9 @@ if (!("cdata" %in% ls())) {
 
 	list(w=t(weights), knots=knots)
 }
+
 # get some rough least-squares estimates
-"ls_estimates" <- function(sc, L) {
+"ls_estimates_Omega" <- function(sc, L) {
 	require(splines)
 
 	if (missing(L)) {
@@ -77,10 +78,56 @@ if (!("cdata" %in% ls())) {
 	Omega
 }
 
+# get some rough least-squares estimates
+"ls_estimates_cholesky" <- function(sc, L) {
+	require(fda)
+
+	if (missing(L)) {
+		stop("Must supply L to get LS estimates")
+	}
+
+	Bspline.basis <- create.bspline.basis(c(min(f),max(f)),norder=4,nbasis=L)
+	knots   <- knots(Bspline.basis)
+	weights <- getbasismatrix(f, Bspline.basis, nderiv=0)
+	sc_w    <- getbasismatrix(sc$knots, Bspline.basis, nderiv=0)
+print(head(weights))
+print(head(sc_w))
+done
+
+
+	weights <- bs(f, df=L, intercept=TRUE, Boundary.knots=c(min(f),max(f)))
+	knots   <- f[apply(weights, 2, which.max)]
+	sc_w    <- predict(weights, sc$knots)
+
+	omega <- rep(NA, L)
+	Omega <- vector("list", L)
+	for (i in 1:L) {
+		Omega[[i]] <- matrix(NA, nrow=9, ncol=9)
+	}
+
+	for (i in 1:9) {
+		for (j in i:9) {
+			fit <- lm(sc$cor[[i]][j,]~0+sc_w)
+			for (l in 1:L) {
+				Omega[[l]][i,j] <- Omega[[l]][j,i] <- coef(fit)[l]
+			}
+		}
+	}
+
+	# use SVD to then construct p.d. Omega's
+	for (l in 1:L) {
+		Omega.svd  <- svd(Omega[[l]])
+		Omega[[l]] <- cov2cor(Omega.svd$u %*% diag(Omega.svd$d) %*% t(Omega.svd$u))
+	}
+
+	Omega
+}
+
 # smooth correlations
 sc <- smooth_corr(z)
 
-if (TRUE) {
+if (FALSE) {
 	# test least squares estimates
-	ests <- ls_estimates(sc, 5)
+	#ests <- ls_estimates_Omega(sc, 5)
+	ests <- ls_estimates_cholesky(sc, 5)
 }
