@@ -93,6 +93,8 @@ if (FALSE) {
 	load("fit2d.RData")
 }
 
+"do_fit" <- function(ss=0.01, it=1) {
+
 Ls <- THE_L
 fits <- lapply(Ls, function(L) {
 	# what kind of knot scheme to use?
@@ -259,27 +261,30 @@ print(round(r$corrOmega[L,,],3))
 	}
 
 	# run in parallel
-	Niter <- 100
-	if (L == 5)  Niter <- 500
-	if (L == 10) Niter <- 750
-	if (L == 15) Niter <- 2000
-	if (L == 20) Niter <- 2000
+	Niter <- 1000
+	if (L == 5)  Niter <- 1000
+	if (L == 10) Niter <- 1000
+	if (L == 15) Niter <- 1000
+	if (L == 20) Niter <- 1000
 	Nchains <- 3
 	Ncores  <- 3
-	if (WHICH_CDAT == "ST" | WHICH_CDAT == "WT") delta  <- 0.8; max_td <- 9
-	if (WHICH_CDAT == "SP" | WHICH_CDAT == "WP") delta  <- 0.8; max_td <- 9
+	if (WHICH_CDAT == "ST" | WHICH_CDAT == "WT") delta  <- 0.8; max_td <- 8
+	if (WHICH_CDAT == "SP" | WHICH_CDAT == "WP") delta  <- 0.8; max_td <- 8
 
 	sflist <- mclapply(1:Nchains, mc.cores=Ncores,
 		function(i) {
-			tf <- stan(fit=fit2d, data=dat, iter=Niter, #init=fn.uinits,
+			tf <- stan(fit=fit2d, data=dat, iter=Niter, init="0", #init=fn.uinits,
+			           algorithm="HMC", control=list(adapt_engaged=FALSE, stepsize=ss, int_time=it, metric="unit_e"),
 			           #control=list(adapt_delta=delta, max_treedepth=max_td),
-			           #control=list(max_treedepth=max_td),
-			           control=list(adapt_delta=delta, max_treedepth=max_td),
+			           #control=list(metric="unit_e", max_treedepth=max_td),
+			           #control=list(adapt_delta=delta, max_treedepth=max_td),
 			           chains = 1, seed=311311, chain_id=i, refresh=5, verbose=TRUE#,
 			           #pars=c("Dbar","corrSigma_f","Omega")
 			           #pars=c("Dbar","Omega")
 			           #pars=c("s","r")
 			)
+
+			#save(tf, file=paste0("tmp/fit",i,".RData"))
 
 			tf
 		}
@@ -287,6 +292,11 @@ print(round(r$corrOmega[L,,],3))
 
 	if (length(sflist) > 1) {
 		cat("Merging fits...\n")
+		#sflist <- vector("list", Nchains)
+		#for (i in 1:Nchains) {
+		#	load(paste0("tmp/fit",i,".RData"))
+		#	sflist[[i]] <- tf
+		#}
 		fit <- sflist2stanfit(sflist)
 	} else {
 		fit <- sflist[[1]]
@@ -380,8 +390,24 @@ if (FALSE) {
 	save(L, fitsum, sp, ini, uf, ufw, knots, DIC, pD, file=paste0("fitsums/fitsum_",fname))
 	#save(sp, file=paste0("fitsums/fit_",fname))
 
-	list(L=L, fit=fit, fitsum=fitsum, DIC=DIC, pD=pD)
+	list(L=L, ini=ini, sp=sp, fitsum=fitsum, DIC=DIC, pD=pD)
 })
+
+}
+
+#eps <- .0001; f1 <- do_fit(eps, 10*eps)
+#eps <- .00001; f2 <- do_fit(eps, 10*eps)
+#eps <- .000001; f3 <- do_fit(eps, 10*eps)
+#eps <- .0000001; f4 <- do_fit(eps, 10*eps)
+#eps <- .0001; f1 <- do_fit(eps, 10*eps)
+#eps <- .0001; f2 <- do_fit(eps, 50*eps)
+#eps <- .0001; f3 <- do_fit(eps, 100*eps)
+#eps <- .0001; f4 <- do_fit(eps, 150*eps)
+#eps <- .0001; f5 <- do_fit(eps, 200*eps)
+#eps <- .0001; f6 <- do_fit(eps, 250*eps)
+#eps <- .0001; f7 <- do_fit(eps, 512*eps)
+#eps <- .0001; f8 <- do_fit(eps, 1024*eps)
+eps <- .0001; fs <- do_fit(eps, 1024*eps)
 
 #round(sapply(1:nrow(ufw),function(i){ 2*invlogit( sum(v3*ufw[i,]) )-1 }),2)
 

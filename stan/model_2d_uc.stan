@@ -51,8 +51,10 @@ model {
 	matrix[k,k] SigmaL;
 	int c;
 
-	for (i in 1:k)    s[i] ~ cauchy(0, 5);
-	for (i in 1:krho) r[i] ~ cauchy(0, 5);
+	//for (i in 1:k)    s[i] ~ cauchy(0, 5);
+	//for (i in 1:krho) r[i] ~ cauchy(0, 5);
+	for (i in 1:k)    s[i] ~ normal(0, 1);
+	for (i in 1:krho) r[i] ~ normal(0, 1);
 
 	// model
 	for (i in 2:n) {
