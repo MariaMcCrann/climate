@@ -163,12 +163,12 @@ if (TRUE) {
 
 	pdf("pdf/2d/data_z_corr_all4.pdf")
   	par(bty="l")
-		par(mar=c(2,2,3,1))
+		par(mar=c(3.5,2,3,1))
   	par(mfrow=c(4,1))
 
 		# ST
 		plot(sc.ST$knots, sc.ST$cor[[9]][1,], col="blue", type="l", main="Empirical Marginal Correlations for CRU Data\nSummer Temperature",
-			ylab="", xlab="", xaxt="n", xlim=rev(range(sc.ST$knots)), ylim=c(-.3,1.25))
+			ylab="", xlab="Grid Cells per Cycle", xaxt="n", xlim=rev(range(sc.ST$knots)), ylim=c(-.3,1.25))
 			axis(1, at=f.samet[seq.samet], labels=p.samet[seq.samet])
 		for (i in 2:7) points(sc.ST$knots, sc.ST$cor[[9]][i,], col="red", type="l")
 		points(sc.ST$knots, sc.ST$cor[[9]][8,], col="black", type="l")

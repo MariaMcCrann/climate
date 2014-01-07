@@ -1,0 +1,3 @@
+PKG_CPPFLAGS=-Wall -I/home/rjp/Dropbox/git/libmcmc/src
+PKG_LIBS=-L/home/rjp/Dropbox/git/libmcmc/lib -lRmcmc -lm -lc -lRmath -lm -lRblas -lRlapack -pthread
+
