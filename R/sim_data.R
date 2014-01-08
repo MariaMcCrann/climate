@@ -4,9 +4,9 @@ library(fda)
 source("R/hmc.R")
 
 set.seed(03172000)
-n <- 100
+n <- 500
 t <- seq(0, 1, len=n)
-k <- 3
+k <- 9
 n.off <- k*(k-1)/2
 
 # number of basis functions
@@ -173,9 +173,9 @@ print(round(A_y_i,2))
 				#D[m,m] <- exp(crossprod(weights[i,], theta.d[m,]))*weights[i,p]
 				D[m,m] <- R_i[m,m]*weights[i,p]
 
-				#P <- t(R_i) %*% D + D %*% R_i
-				T <- D %*% R_i
-				P <- t(T) + T
+				P <- t(R_i) %*% D + D %*% R_i
+				#T <- D %*% R_i
+				#P <- t(T) + T
 if (FALSE) { #i == 11 && m==3) {
 	print(c(i,p,m));
 #	print(round(P,2));
@@ -194,16 +194,21 @@ if (FALSE) { #i == 11 && m==3) {
 					D <- matrix(0, nrow=k, ncol=k)
 					D[m1,m2] <- weights[i,p]
 
-					#P <- t(R_i) %*% D + t(D) %*% R_i
-					T <- D %*% R_i
-					P <- t(T) + T
+if (FALSE) { #i==12) {
+print(round(t(D) %*% R_i,2))
+print(round(t(R_i) %*% D,2))
+}
+
+					P <- t(R_i) %*% D + t(D) %*% R_i
+					#T <- D %*% R_i
+					#P <- t(T) + T
 #if (i==11&&m1==1&&m2==3) { print(T) }
 
 					#d_theta.o[index,p] <- d_theta.o[index,p] + weights[i,p]*invL_i_x_y_i[m1]*invL_i_x_y_i[m2]
 #					d_theta.o[m,p] <- d_theta.o[m,p] + (t(y[i,]) %*% invSigma %*% (
 #						L_i %*% t(C) + C %*% t(L_i)
 #						) %*% invSigma %*% y[i,])
-					#d_theta.o[index,p] <- d_theta.o[index,p] + 0.5 * t(y[i,]) %*% invSigma %*% P %*% invSigma %*% y[i,]
+##					d_theta.o[index,p] <- d_theta.o[index,p] + 0.5 * t(y[i,]) %*% invSigma %*% P %*% invSigma %*% y[i,]
 					d_theta.o[index,p] <- d_theta.o[index,p] + 0.5 * t(A_y_i) %*% P %*% A_y_i
 
 					index <- index+1
@@ -260,26 +265,53 @@ s <- function(x) { # variable scales
 
 	for (i in 1:n) {
 		R_i <- diag(exp( sapply(1:k, function(row) { crossprod(weights[i,], theta.d[row,]) }) ))
-		R_i[upper.tri(L_i)] <- sapply(1:n.off, function(row) { crossprod(weights[i,], theta.o[row,]) })
+		R_i[upper.tri(R_i)] <- sapply(1:n.off, function(row) { crossprod(weights[i,], theta.o[row,]) })
+#if (i==12) { print(round(R_i,2)) }
+
+		invR_i   <- backsolve(R_i, diag(k))
+		invSigma <- invR_i %*% t(invR_i)
 
 		for (p in 1:L) {
+			if (weights[i,p] == 0) next;
+
 			for (m in 1:k) {
-				s_theta.d[m,p] <- s_theta.d[m,p] + (exp(crossprod(weights[i,], theta.d[m,]))*weights[i,p])^2
+				D <- matrix(0, nrow=k, ncol=k)
+				#D[m,m] <- exp(crossprod(weights[i,], theta.d[m,]))*weights[i,p]
+				D[m,m] <- R_i[m,m]*weights[i,p]
+
+				P <- t(R_i) %*% D + D %*% R_i
+
+				#s_theta.d[m,p] <- s_theta.d[m,p] + (exp(crossprod(weights[i,], theta.d[m,]))*weights[i,p])^2
+				#s_theta.d[m,p] <- s_theta.d[m,p] + (R_i[m,m]*weights[i,p])^2
+				s_theta.d[m,p] <- s_theta.d[m,p] + sum(diag( invSigma %*% P %*% invSigma %*% P ))
 			}
 
 			index <- 1
-			for (m1 in 2:k) {
-				for (m2 in 1:(m1-1)) {
-					s_theta.o[index,p] <- s_theta.o[index,p] + weights[i,p]^2
+			for (m1 in 1:(k-1)) {
+				for (m2 in (m1+1):k) {
+					D <- matrix(0, nrow=k, ncol=k)
+					D[m1,m2] <- weights[i,p]
+
+					P <- t(R_i) %*% D + t(D) %*% R_i
+#if (i==2&&index==1) { print(round(invSigma %*% P, 2)) }
+#if (index==1) { print(round(diag( invSigma %*% P %*% invSigma %*% P ),2)) }
+#if (i==2&&index==1) { cat(round( (diag( invSigma %*% P %*% invSigma %*% P )), 2),"\n") }
+					s_theta.o[index,p] <- s_theta.o[index,p] + sum(diag( invSigma %*% P %*% invSigma %*% P ))
 
 					index <- index+1
 				}
 			}
+ 
+
 		}
+#cat("\n")
+#print(c(i,round(s_theta.o[1],2)))
 	}
 
-	s_theta.d <- 2*s_theta.d + 1/prior.theta_sd^2
-	s_theta.o <-   s_theta.o + 1/prior.theta_sd^2
+#print(round(as.vector(s_theta.o),2))
+
+	s_theta.d <- 0.5*s_theta.d + 1/prior.theta_sd^2
+	s_theta.o <- 0.5*s_theta.o + 1/prior.theta_sd^2
 
 	sds <- 1/sqrt((c(as.vector(s_theta.d), as.vector(s_theta.o))))
 	#sds <- max(sds)/sds
@@ -287,7 +319,7 @@ s <- function(x) { # variable scales
 	#sqrt(1/(c(as.vector(s_theta.d), as.vector(s_theta.o))))
 	#1/sds
 
-	sds/2
+	#sds/2
 	#sqrt((c(as.vector(s_theta.d), as.vector(s_theta.o))))
 }
 
@@ -296,7 +328,7 @@ v2 <- rnorm(L*(k+n.off))
 v3 <- rep(0, L*(k+n.off))
 #print( c(U(v1), U(v2), U(v3)) )
 #print( round(grad_U(v1),3) ); done; #print( round(grad_U(v2),3) ); print( round(grad_U(v3),3) );done
-#print( round(s(v1),3) ); print( round(s(v2),3) ); print( round(s(v3),3) )
+#print( round(s(v1),3) ); print( round(s(v2),3) ); print( round(s(v3),3) );done
 
 #eps/sd < 2 => eps < 2*sd
 #done
@@ -336,37 +368,45 @@ sapply(1:length(nz), function(i){ Mnz[i,1:Nnz[i]] <<- nz[[i]] })
 Wnz <- matrix(0, nrow=length(nz), ncol=max(Nnz))
 sapply(1:length(nz), function(i){ Wnz[i,1:Nnz[i]] <<- weights[i,nz[[i]]] })
 
+if (FALSE) {
+t1 <- proc.time()
+#for (i in 1:1) U(v1) #print(round(U(v1),2))
+#for (i in 1:1) print(round(grad_U(v1),2))
+for (i in 1:1) print(round(s(v1),2))
+#for (i in 1:50) { U(v1); grad_U(v1); s(v1); }
+print(proc.time()-t1)
+}
+
+if (TRUE) {
+source("R/spline_cov.R")
+
+set.seed(1983)
 Niter <- 100
 samples <- matrix(0, nrow=Niter, ncol=L*(k+n.off))
 
 t1 <- proc.time()
-#for (i in 1:1) U(v1) #print(round(U(v1),2))
-for (i in 1:1) print(round(grad_U(v3),2))
-print(proc.time()-t1)
-
-source("R/spline_cov.R")
-t1 <- proc.time()
 for (i in 1:1) fit <- spline_cov(prior=1,
 	n=n, k=k, y=y, L=L, Nnz=Nnz, Mnz=Mnz, Wnz=Wnz,
-  step_e=0.5, step_L=10, inits=v3, Niter=Niter, samples=samples)
+  step_e=0.1, step_L=50, inits=v1, Niter=Niter, samples=samples)
 print(proc.time()-t1)
 
-done
+res <- mcmc(matrix(fit$samples, nrow=Niter, ncol=L*(k+n.off)))
+} else {
 
 start <- v1
-step.e <- 1
-step.L <- 10 #round(1/step.e)
+step.e <- 0.5
+step.L <- 2 #round(1/step.e)
 print(c(step.e, step.L, step.L*step.e))
 
-set.seed(311)
-nsamples <- 500
+set.seed(1983)
+nsamples <- 10
 samples <- matrix(0, nrow=nsamples, ncol=L*(k+n.off))
 current <- start
 acc <- 0
 for (i in 1:nsamples) {
 	res <- HMC(U, grad_U, step.e, step.L, current, s=s)
 	current <- res$val
-print(c(res$acc,current))
+#print(c(res$acc,current))
 	samples[i,] <- current
 	acc <- acc+res$acc
 }
@@ -375,3 +415,5 @@ cat("HMC acceptance rate:");print(acc/nsamples)
 print(summary(mcmc.samples))
 print(acf(mcmc.samples,plot=FALSE))
 cat("Effective sample size:\n");print(effectiveSize(mcmc.samples))
+
+}

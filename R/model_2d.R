@@ -10,6 +10,7 @@ library(splines)
 source("R/plot_2d.R")
 source("R/load_data2.R")
 source("R/smooth_corr.R")
+source("R/spline_cov.R")
 
 cdata <- SumTemp
 tlon  <- lon
@@ -93,7 +94,12 @@ if (FALSE) {
 	load("fit2d.RData")
 }
 
-"do_fit" <- function(ss=0.01, it=1) {
+"do_fit" <- function(ss=0.01, it=1, starts) {
+
+	if (missing(starts))
+		has_starts <- FALSE
+	else
+		has_starts <- TRUE
 
 Ls <- THE_L
 fits <- lapply(Ls, function(L) {
@@ -260,14 +266,18 @@ print(round(r$corrOmega[L,,],3))
 		r
 	}
 
+STAN <- FALSE
+
+if (STAN) {
 	# run in parallel
-	Niter <- 1000
-	if (L == 5)  Niter <- 1000
-	if (L == 10) Niter <- 1000
-	if (L == 15) Niter <- 1000
-	if (L == 20) Niter <- 1000
+	Niter <- 100
+	if (L == 5)  Niter <- 100
+	if (L == 10) Niter <- 100
+	if (L == 15) Niter <- 100
+	if (L == 20) Niter <- 100
 	Nchains <- 3
 	Ncores  <- 3
+
 	if (WHICH_CDAT == "ST" | WHICH_CDAT == "WT") delta  <- 0.8; max_td <- 8
 	if (WHICH_CDAT == "SP" | WHICH_CDAT == "WP") delta  <- 0.8; max_td <- 8
 
@@ -391,9 +401,68 @@ if (FALSE) {
 	#save(sp, file=paste0("fitsums/fit_",fname))
 
 	list(L=L, ini=ini, sp=sp, fitsum=fitsum, DIC=DIC, pD=pD)
+} else { # end do stan
+
+	Niter <- 10
+	Nchains <- 3
+	Ncores  <- 3
+	Nparam <- L*(dat$k + dat$k*(dat$k-1)/2)
+
+	if (!has_starts) {
+		# get initial values with BFGS
+		init <- rep(0, Nparam)
+		t1 <- proc.time()
+		bfgs <- optim(par=init,
+			fn=function(x) {
+				lk <- spline_cov_lk(prior=1, n=dat$n, k=dat$k, y=dat$Zstar, L=dat$L, Nnz=dat$Nnz, Mnz=dat$Mnz, Wnz=dat$Wnz, eval=x)
+				-lk
+			},
+			gr=function(x) {
+				gr <- spline_cov_gr(prior=1, n=dat$n, k=dat$k, y=dat$Zstar, L=dat$L, Nnz=dat$Nnz, Mnz=dat$Mnz, Wnz=dat$Wnz, eval=x)
+				-gr
+			},
+		method="BFGS", control=list(maxit=5000))
+		print(proc.time()-t1)
+		init <- bfgs$par
+	} else {
+		init <- starts
+		bfgs <- NA
+	}
+
+	samples <- matrix(0, nrow=Niter, ncol=Nparam)
+
+	t1 <- proc.time()
+	res <- mcmc.list( mclapply(1:Nchains, mc.cores=Ncores,
+		function(i) {
+		set.seed(311*i);
+		fit <- spline_cov(prior=1,
+		  n=dat$n, k=dat$k, y=dat$Zstar, L=dat$L, Nnz=dat$Nnz, Mnz=dat$Mnz, Wnz=dat$Wnz,
+		  step_e=ss, step_L=it, inits=init, Niter=Niter, samples=samples, verbose=TRUE)
+
+		res <- mcmc(matrix(fit$samples, nrow=Niter, ncol=Nparam))
+	}) )
+	print(proc.time()-t1)
+
+	# save fit
+	if (use_lin) {
+		fname <- paste0("linL",L,"_",WHICH_CDAT,".RData")
+	} else if (use_bs) {
+		fname <- paste0("bsL",L,"_",WHICH_CDAT,".RData")
+	} else if (use_cknots) {
+		fname <- paste0("cL",L,"_",WHICH_CDAT,".RData")
+	} else {
+		fname <- paste0("L",L,"_",WHICH_CDAT,".RData")
+	}
+	save(L, res, bfgs, uf, ufw, knots, file=paste0("fitsums/fitsum_",fname))
+
+	list(L=L, res=res, bfgs=bfgs)
+} # don't do stan
+
 })
 
 }
+
+fit <- do_fit(0.025, 5) #, good_starts)
 
 #eps <- .0001; f1 <- do_fit(eps, 10*eps)
 #eps <- .00001; f2 <- do_fit(eps, 10*eps)
@@ -407,7 +476,7 @@ if (FALSE) {
 #eps <- .0001; f6 <- do_fit(eps, 250*eps)
 #eps <- .0001; f7 <- do_fit(eps, 512*eps)
 #eps <- .0001; f8 <- do_fit(eps, 1024*eps)
-eps <- .0001; fs <- do_fit(eps, 1024*eps)
+#eps <- .0001; fs <- do_fit(eps, 1024*eps)
 
 #round(sapply(1:nrow(ufw),function(i){ 2*invlogit( sum(v3*ufw[i,]) )-1 }),2)
 

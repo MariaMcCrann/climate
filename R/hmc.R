@@ -44,7 +44,7 @@ require(MASS)
 	pr <- log(runif(1))
 	vs <- current_U-proposed_U + current_K-proposed_K
 
-if (FALSE) {
+if (TRUE) {
 cat("Current:");print(c(current_U,current_K))
 cat("Proposed:");print(c(proposed_U,proposed_K))
 print(round(epsilon[1:10],3));

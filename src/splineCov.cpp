@@ -207,7 +207,7 @@ bool ModelSplineCov::grad_lk(const double *theta, double *grad) {
 	double d;
 	double P[mData->k*mData->k];
 
-	// add prior component
+	// start with prior component
 	for (i = 0; i < mNumParams; i++) {
 		grad[i] = -theta[i]/mPrior->var;
 	}
@@ -239,19 +239,6 @@ bool ModelSplineCov::grad_lk(const double *theta, double *grad) {
 			dgemv_(&ctran, /*m*/&mData->k, /*n*/&mData->k, /*alpha*/&done, /*A*/A,
 			       /*lda*/&mData->k, /*X*/mData->y+irow, /*incx*/&mData->n,
 			       /*beta*/&dzero, /*y*/A_y_i, /*incy*/&ione);
-
-/*
-if (irow+1 == 12) {
-printf("R_i:\n");
-for (k1 = 0; k1 < mData->k; k1++) { for (k2 = 0; k2 < mData->k; k2++) { printf("%.2f; ", mR_i[k1 + k2*mData->k]); } printf("\n"); }
-printf("invR_i:\n");
-for (k1 = 0; k1 < mData->k; k1++) { for (k2 = 0; k2 < mData->k; k2++) { printf("%.2f; ", mInvR_i[k1 + k2*mData->k]); } printf("\n"); }
-printf("A:\n");
-for (k1 = 0; k1 < mData->k; k1++) { for (k2 = 0; k2 < mData->k; k2++) { printf("%.2f; ", A[k1 + k2*mData->k]); } printf("\n"); }
-printf("A_y_i:\n");
-for (k1 = 0; k1 < mData->k; k1++) { printf("%.2f; ", A_y_i[k1]); } printf("\n");
-}
-*/
 
 		// deterimenant piece for diagonal elements
 		for (i = 0; i < mData->Nnz[irow]; i++) {
@@ -294,11 +281,16 @@ for (k1 = 0; k1 < mData->k; k1++) { printf("%.2f; ", A_y_i[k1]); } printf("\n");
 				for (k1 = 0; k1 < k2; k1++) {
 					d = mData->Wnz[index];
 
-					// compute D x R_i, where D is 0 except for D[k1,k2] = d
+					// compute D x R_i, where D is 0 except for D[k2,k1] = d
 					for (j = 0; j < mData->k*mData->k; j++) { P[j] = 0; }
 					for (j = k1; j < mData->k; j++) {
-						P[k1 + j*mData->k] = d * mR_i[k2 + j*mData->k];
+						P[k2 + j*mData->k] = d * mR_i[k1 + j*mData->k];
 					}
+/*
+if (irow+1==12) {
+for (int a = 0; a < mData->k; a++) { for (int b = 0; b < mData->k; b++) { printf("%.2f ", P[a + b*mData->k]); } printf("\n"); }
+}
+*/
 
 					// compute the rest of the quadratic form
 					for (k = k1; k < mData->k; k++) {
@@ -321,84 +313,129 @@ for (k1 = 0; k1 < mData->k; k1++) { printf("%.2f; ", A_y_i[k1]); } printf("\n");
 }
 
 bool ModelSplineCov::scales(const double *theta, double *s) {
-	return(true);
-}
+	int i,j,k;
+	int c;
+	int iL,irow;
+	int k1,k2;
+	int index;
+	double d;
 
-/*
-class ModelMean : public Model {
-public:
-	class Prior {
-	public:
-		int n;
-		const double *theta;
-	};
+	const double *diag = theta;
+	const double *offd = theta + mData->k*mData->L;
 
-	class Data {
-	public:
-		int n;
-		const double *y;
-	};
+	double *s_d = s;
+	double *s_o = s + mData->k*mData->L;
 
-	ModelMean(const Prior *prior, const Data *data, double known_sd=1);
+	char   cside = 'L';
+	char   cuplo = 'U';
+	char   ctran = 'N';
+	char   cdiag = 'N';
+	double done  = 1;
+	double dzero = 0;
 
-  virtual int num_params() const { return(1); }
-	virtual bool log_kernel(const double *theta, double *lp, bool do_lik=true, bool do_pri=true);
-	virtual bool grad_lk(const double *theta, double *grad);
-	virtual bool scales(const double *theta, double *s);
+	double invSigma[mData->k*mData->k];
+	double P[mData->k*mData->k];
+	double A[mData->k*mData->k];
 
-private:
-	const Prior *mPrior;
-	const Data  *mData;
-	double mSD; // known SD
-	double mTMP;
-};
+	// initialize scales
+	for (i = 0; i < mNumParams; i++) {
+		s[i] = 0;
+	}
 
-ModelMean::ModelMean(const Prior *prior, const Data *data, double known_sd) {
-	mPrior = prior;
-	mData = data;
-	mSD = known_sd;
-}
+	// add components from likelihood
+	for (irow = 0; irow < mData->n; irow++) {
 
-bool ModelMean::log_kernel(const double *theta, double *lp, bool do_lik, bool do_pri) {
-	double llik = 0;
-	double lpri = 0;
-mTMP = 123;
+		// fill in R_i
+		fillR_i(irow, diag, offd);
 
-	if (do_lik) {
-		for (int i = 0; i < mData->n; i++) {
-			llik += pow(mData->y[i]-theta[0], 2);
+		// invert R_i by solving R_i b = diag(k)
+		for (i = 0; i < mData->k*mData->k; i++) { mInvR_i[i] = 0; }
+		for (i = 0; i < mData->k; i++) { mInvR_i[i + i*mData->k] = 1; }
+		cside = 'L'; cuplo = 'U'; ctran = 'N'; cdiag = 'N';
+		dtrsm_(&cside, &cuplo, &ctran, &cdiag,
+		       /*m*/&mData->k, /*n*/&mData->k, /*alpha*/&done, /*A*/mR_i,
+		       /*lda*/&mData->k, /*B*/mInvR_i, /*ldb*/&mData->k);
+
+		// compute invSigma = invR_i x t(invR_i)
+		for (i = 0; i < mData->k*mData->k; i++) { invSigma[i] = mInvR_i[i]; }
+		cside = 'R'; cuplo = 'U'; ctran = 'T'; cdiag = 'N';
+		dtrmm_(&cside, &cuplo, &ctran, &cdiag,
+		       /*m*/&mData->k, /*n*/&mData->k, /*alpha*/&done, /*A*/mInvR_i,
+		       /*lda*/&mData->k, /*B*/invSigma, /*ldb*/&mData->k);
+
+		for (i = 0; i < mData->Nnz[irow]; i++) {
+			index = irow + i*mData->n;
+			iL = mData->Mnz[index];
+
+			// diagonal elements
+			for (k1 = 0; k1 < mData->k; k1++) {
+				// compute R_i[k1,k1]*weights[irow,iL]
+				d = mR_i[k1 + k1*mData->k] * mData->Wnz[index];
+
+				// compute D x R_i, where D is 0 except for D[k1,k1] = d
+				for (j = 0; j < mData->k*mData->k; j++) { P[j] = 0; }
+				for (j = k1; j < mData->k; j++) {
+					P[k1 + j*mData->k] = d * mR_i[k1 + j*mData->k];
+					P[j + k1*mData->k] += P[k1 + j*mData->k];
+				}
+
+				// compute A = invSigma x P
+				ctran = 'N';
+				dgemm_(&ctran, &ctran,
+				       /*m*/&mData->k, /*n*/&mData->k, /*k*/&mData->k, /*alpha*/&done,
+				       /*A*/invSigma, /*lda*/&mData->k, /*B*/P, /*ldb*/&mData->k,
+				       /*beta*/&dzero, /*C*/A, /*ldc*/&mData->k);
+
+				// add trace to scale
+				for (k = 0; k < mData->k; k++) {
+					for (j = 0; j < mData->k; j++) {
+						s_d[k1 + iL*mData->k] += A[k + j*mData->k] * A[j + k*mData->k];
+					}
+				}
+
+			}
+
+			// upper triangular elements
+			c = 0;
+			for (k2 = 1; k2 < mData->k; k2++) {
+				for (k1 = 0; k1 < k2; k1++) {
+					d = mData->Wnz[index];
+
+					// compute t(D) x R_i, where D is 0 except for D[k1,k2] = d
+					for (j = 0; j < mData->k*mData->k; j++) { P[j] = 0; }
+					for (j = 0; j < mData->k; j++) {
+						P[k2 + j*mData->k] = d * mR_i[k1 + j*mData->k];
+						P[j + k2*mData->k] += P[k2 + j*mData->k];
+					}
+
+					// compute A = invSigma x P
+					ctran = 'N';
+					dgemm_(&ctran, &ctran,
+					       /*m*/&mData->k, /*n*/&mData->k, /*k*/&mData->k, /*alpha*/&done,
+					       /*A*/invSigma, /*lda*/&mData->k, /*B*/P, /*ldb*/&mData->k,
+					       /*beta*/&dzero, /*C*/A, /*ldc*/&mData->k);
+
+					// add trace to scale
+					for (k = 0; k < mData->k; k++) {
+						for (j = 0; j < mData->k; j++) {
+							s_o[c + iL*mKTri] += A[k + j*mData->k] * A[j + k*mData->k];
+						}
+					}
+
+					c++;
+				}
+			}
+
 		}
-		llik *= -0.5/pow(mSD, 2);
 	}
 
-	if (do_pri) {
-		lpri = -0.5*pow(theta[0]-mPrior->theta[0], 2)/pow(mPrior->theta[1], 2);
+	// SD scale
+	for (i = 0; i < mNumParams; i++) {
+		s[i] = 1/sqrt(0.5*s[i] + 1/mPrior->var);
 	}
-
-	*lp = llik + lpri;
 
 	return(true);
 }
-
-bool ModelMean::grad_lk(const double *theta, double *grad) {
-	grad[0] = 0;
-
-	for (int i = 0; i < mData->n; i++) {
-		grad[0] += (mData->y[i]-theta[0]);
-	}
-	grad[0] *= 1/pow(mSD, 2);
-
-	grad[0] += -(theta[0]-mPrior->theta[0])/pow(mPrior->theta[1], 2);
-
-	return(true);
-}
-
-bool ModelMean::scales(const double *theta, double *s) {
-	s[0] = 1/sqrt(mData->n/pow(mSD,2) + 1/pow(mPrior->theta[1], 2));
-
-	return(true);
-}
-*/
 
 extern "C" {
 
@@ -413,13 +450,14 @@ void spline_cov_fit(
 	// sampler 
 	double *step_e, int *step_L,
 	double *inits,
-	int *Niter, double *samples
+	int *Niter, double *samples,
+	bool *verbose
 ) {
 
 	// prior
 	ModelSplineCov::Prior *model_prior = new ModelSplineCov::Prior();
 	model_prior->sd  = prior[0];
-	model_prior->var = pow(prior[0],2);
+	model_prior->var = pow(prior[0], 2);
 
 	// data
 	ModelSplineCov::Data *model_data = new ModelSplineCov::Data();
@@ -437,20 +475,100 @@ void spline_cov_fit(
 /*
 	double lp;
 	m->log_kernel((const double *)inits, &lp);
-	printf("lp = %.2f\n", lp);
-*/
+	//printf("lp = %.2f\n", lp);
 
 	double grad[m->num_params()];
 	m->grad_lk((const double*)inits, grad);
-	for (int i = 0; i < m->num_params(); i++) printf("%.2f ", grad[i]); printf("\n");
+	//for (int i = 0; i < m->num_params(); i++) printf("%.2f ", grad[i]); printf("\n");
 
-/*
+	double scales[m->num_params()];
+	m->scales((const double*)inits, scales);
+	for (int i = 0; i < m->num_params(); i++) printf("%.2f ", scales[i]); printf("\n");
+*/
+
 	// get samples
 	HMC *sampler = new HMC(m, (const double *)inits, samples);
-	sampler->sample(*Niter, *step_e, *step_L);
+	sampler->sample(*Niter, *step_e, *step_L, verbose);
 
 	delete sampler;
-*/
+	delete m;
+	delete model_prior;
+	delete model_data;
+}
+
+void spline_cov_lk(
+	// prior
+	double *prior,
+	// data
+	int *n, int *k,
+	double *y,
+	int *L,
+	int *Nnz, int *Mnz, double *Wnz,
+	// evaluation point
+	double *eval,
+	// result
+	double *lk
+) {
+
+	// prior
+	ModelSplineCov::Prior *model_prior = new ModelSplineCov::Prior();
+	model_prior->sd  = prior[0];
+	model_prior->var = pow(prior[0], 2);
+
+	// data
+	ModelSplineCov::Data *model_data = new ModelSplineCov::Data();
+	model_data->n   = n[0];
+	model_data->k   = k[0];
+	model_data->y   = (const double *)y;
+	model_data->L   = L[0];
+	model_data->Nnz = (const int *)Nnz;
+	model_data->Mnz = (const int *)Mnz;
+	model_data->Wnz = (const double *)Wnz;
+
+	// model
+	Model *m = new ModelSplineCov((const ModelSplineCov::Prior *)model_prior, (const ModelSplineCov::Data *)model_data);
+
+	m->log_kernel((const double *)eval, lk);
+
+	delete m;
+	delete model_prior;
+	delete model_data;
+}
+
+void spline_cov_gr(
+	// prior
+	double *prior,
+	// data
+	int *n, int *k,
+	double *y,
+	int *L,
+	int *Nnz, int *Mnz, double *Wnz,
+	// evaluation point
+	double *eval,
+	// result
+	double *gr
+) {
+
+	// prior
+	ModelSplineCov::Prior *model_prior = new ModelSplineCov::Prior();
+	model_prior->sd  = prior[0];
+	model_prior->var = pow(prior[0], 2);
+
+	// data
+	ModelSplineCov::Data *model_data = new ModelSplineCov::Data();
+	model_data->n   = n[0];
+	model_data->k   = k[0];
+	model_data->y   = (const double *)y;
+	model_data->L   = L[0];
+	model_data->Nnz = (const int *)Nnz;
+	model_data->Mnz = (const int *)Mnz;
+	model_data->Wnz = (const double *)Wnz;
+
+	// model
+	Model *m = new ModelSplineCov((const ModelSplineCov::Prior *)model_prior, (const ModelSplineCov::Data *)model_data);
+
+	m->grad_lk((const double*)eval, gr);
+
 	delete m;
 	delete model_prior;
 	delete model_data;
