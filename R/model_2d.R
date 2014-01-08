@@ -6,6 +6,7 @@ library(rstan); set_cppo("fast")
 library(MCMCpack)
 library(mvtnorm)
 library(splines)
+library(coda)
 
 source("R/plot_2d.R")
 source("R/load_data2.R")
@@ -403,7 +404,7 @@ if (FALSE) {
 	list(L=L, ini=ini, sp=sp, fitsum=fitsum, DIC=DIC, pD=pD)
 } else { # end do stan
 
-	Niter <- 100
+	Niter <- 5000
 	Nchains <- 3
 	Ncores  <- 3
 	Nparam <- L*(dat$k + dat$k*(dat$k-1)/2)
@@ -414,11 +415,11 @@ if (FALSE) {
 		t1 <- proc.time()
 		bfgs <- optim(par=init,
 			fn=function(x) {
-				lk <- spline_cov_lk(prior=1, n=dat$n, k=dat$k, y=dat$Zstar, L=dat$L, Nnz=dat$Nnz, Mnz=dat$Mnz, Wnz=dat$Wnz, eval=x)
+				lk <- spline_cov_lk(prior=1, n=dat$n, k=dat$k, y=z, L=dat$L, Nnz=dat$Nnz, Mnz=dat$Mnz, Wnz=dat$Wnz, eval=x)
 				-lk
 			},
 			gr=function(x) {
-				gr <- spline_cov_gr(prior=1, n=dat$n, k=dat$k, y=dat$Zstar, L=dat$L, Nnz=dat$Nnz, Mnz=dat$Mnz, Wnz=dat$Wnz, eval=x)
+				gr <- spline_cov_gr(prior=1, n=dat$n, k=dat$k, y=z, L=dat$L, Nnz=dat$Nnz, Mnz=dat$Mnz, Wnz=dat$Wnz, eval=x)
 				-gr
 			},
 		method="BFGS", control=list(maxit=5000))
@@ -436,7 +437,7 @@ if (FALSE) {
 		function(i) {
 		set.seed(311*i);
 		fit <- spline_cov(prior=1,
-		  n=dat$n, k=dat$k, y=dat$Zstar, L=dat$L, Nnz=dat$Nnz, Mnz=dat$Mnz, Wnz=dat$Wnz,
+		  n=dat$n, k=dat$k, y=z, L=dat$L, Nnz=dat$Nnz, Mnz=dat$Mnz, Wnz=dat$Wnz,
 		  step_e=ss, step_L=it, inits=init, Niter=Niter, samples=samples, verbose=TRUE)
 
 		res <- mcmc(matrix(fit$samples, nrow=Niter, ncol=Nparam))
@@ -462,7 +463,8 @@ if (FALSE) {
 
 }
 
-fit <- do_fit(0.025, 5) #, good_starts)
+fit <- do_fit(0.025, 50) #, good_starts)
+#fit <- do_fit(0.025, 5) #, good_starts)
 #fit <- do_fit(0.025, 2^9) #, good_starts)
 
 #eps <- .0001; f1 <- do_fit(eps, 10*eps)
