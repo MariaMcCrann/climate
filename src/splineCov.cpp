@@ -3,6 +3,7 @@
 #include <math.h>
 #include "model.h"
 #include "hmc.h"
+#include "inline.h"
 
 #include <R.h>
 #include <R_ext/Lapack.h>
@@ -119,8 +120,8 @@ bool ModelSplineCov::log_kernel(const double *theta, double *lp, bool do_lik, bo
 	double done   = 1;
 	double bs[mData->k];
 
-//for (i = 0; i < mData->k*mData->L; i++) printf("%.2f; ", diag[i]); printf("\n");
-//for (i = 0; i < mKTri*mData->L; i++) printf("%.2f; ", offd[i]); printf("\n");
+//for (i = 0; i < mData->k*mData->L; i++) MSG("%.2f; ", diag[i]); MSG("\n");
+//for (i = 0; i < mKTri*mData->L; i++) MSG("%.2f; ", offd[i]); MSG("\n");
 
 	if (do_lik) { // likelihood
 		// compute column sums of diag
@@ -138,12 +139,12 @@ bool ModelSplineCov::log_kernel(const double *theta, double *lp, bool do_lik, bo
 
 /*
 if (irow == 2) {
-printf("R_i:\n");
+MSG("R_i:\n");
 for (k1 = 0; k1 < mData->k; k1++) {
 	for (k2 = 0; k2 < mData->k; k2++) {
-		printf("%.2f; ", mR_i[k1 + k2*mData->k]);
+		MSG("%.2f; ", mR_i[k1 + k2*mData->k]);
 	}
-	printf("\n");
+	MSG("\n");
 } }
 */
 
@@ -288,7 +289,7 @@ bool ModelSplineCov::grad_lk(const double *theta, double *grad) {
 					}
 /*
 if (irow+1==12) {
-for (int a = 0; a < mData->k; a++) { for (int b = 0; b < mData->k; b++) { printf("%.2f ", P[a + b*mData->k]); } printf("\n"); }
+for (int a = 0; a < mData->k; a++) { for (int b = 0; b < mData->k; b++) { MSG("%.2f ", P[a + b*mData->k]); } MSG("\n"); }
 }
 */
 
@@ -475,15 +476,15 @@ void spline_cov_fit(
 /*
 	double lp;
 	m->log_kernel((const double *)inits, &lp);
-	//printf("lp = %.2f\n", lp);
+	//MSG("lp = %.2f\n", lp);
 
 	double grad[m->num_params()];
 	m->grad_lk((const double*)inits, grad);
-	//for (int i = 0; i < m->num_params(); i++) printf("%.2f ", grad[i]); printf("\n");
+	//for (int i = 0; i < m->num_params(); i++) MSG("%.2f ", grad[i]); MSG("\n");
 
 	double scales[m->num_params()];
 	m->scales((const double*)inits, scales);
-	for (int i = 0; i < m->num_params(); i++) printf("%.2f ", scales[i]); printf("\n");
+	for (int i = 0; i < m->num_params(); i++) MSG("%.2f ", scales[i]); MSG("\n");
 */
 
 	// get samples

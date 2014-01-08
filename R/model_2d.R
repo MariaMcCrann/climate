@@ -403,7 +403,7 @@ if (FALSE) {
 	list(L=L, ini=ini, sp=sp, fitsum=fitsum, DIC=DIC, pD=pD)
 } else { # end do stan
 
-	Niter <- 1000
+	Niter <- 100
 	Nchains <- 3
 	Ncores  <- 3
 	Nparam <- L*(dat$k + dat$k*(dat$k-1)/2)
@@ -462,7 +462,8 @@ if (FALSE) {
 
 }
 
-fit <- do_fit(0.025, 2^9) #, good_starts)
+fit <- do_fit(0.025, 5) #, good_starts)
+#fit <- do_fit(0.025, 2^9) #, good_starts)
 
 #eps <- .0001; f1 <- do_fit(eps, 10*eps)
 #eps <- .00001; f2 <- do_fit(eps, 10*eps)
