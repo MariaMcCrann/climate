@@ -4,9 +4,9 @@ library(fda)
 source("R/hmc.R")
 
 set.seed(03172000)
-n <- 500
+n <- 1000
 t <- seq(0, 1, len=n)
-k <- 9
+k <- 3
 n.off <- k*(k-1)/2
 
 # number of basis functions
@@ -134,17 +134,25 @@ grad_U.old <- function(x) { # vector of partials of U wrt x
    -c(as.vector(d_theta.d), as.vector(d_theta.o))
 }
 
-grad_U <- function(x) { # vector of partials of U wrt x
+grad_U <- function(x, row) { # vector of partials of U wrt x
 	theta.d <- matrix(x[1:(L*k)], nrow=k, ncol=L)
 	theta.o <- matrix(x[L*k+1:(L*n.off)], nrow=n.off, ncol=L)
 
 	d_theta.d <- matrix(0, nrow=k, ncol=L)
 	d_theta.o <- matrix(0, nrow=n.off, ncol=L)
 
-	d_theta.d <- d_theta.d -theta.d/prior.theta_sd^2
-	d_theta.o <- d_theta.o -theta.o/prior.theta_sd^2
+	if (missing(row)) {
+		# normal gradient
+		rows <- 1:n
+		d_theta.d <- d_theta.d -theta.d/prior.theta_sd^2
+		d_theta.o <- d_theta.o -theta.o/prior.theta_sd^2
+	} else {
+		# only do one row and skip prior piece
+		rows <- row
+	}
 
-	for (i in 1:n) {
+	#for (i in 1:n) {
+	for (i in rows) {
 		R_i <- diag(exp( sapply(1:k, function(row) { crossprod(weights[i,], theta.d[row,]) }) ))
 		R_i[upper.tri(R_i)] <- sapply(1:n.off, function(row) { crossprod(weights[i,], theta.o[row,]) })
 
@@ -256,7 +264,18 @@ s.old <- function(x) { # variable scales
 	sqrt(1/c(as.vector(s_theta.d), as.vector(s_theta.o)))
 }
 
+M <- function(x) { # cholesky of mass matrix M
+	#chol(chol2inv(
+		chol(Reduce('+', lapply(1:n, function(row) { tcrossprod(grad_U(x,row)) })))
+	#))
+}
+
 s <- function(x) { # variable scales
+	A <- Reduce('+', lapply(1:n, function(row) { tcrossprod(grad_U(x,row)) }))
+	B <- chol2inv(chol(A))
+
+	return( sqrt(diag( B )) )
+
 	theta.d <- matrix(x[1:(L*k)], nrow=k, ncol=L)
 	theta.o <- matrix(x[L*k+1:(L*n.off)], nrow=n.off, ncol=L)
 
@@ -329,6 +348,7 @@ v3 <- rep(0, L*(k+n.off))
 #print( c(U(v1), U(v2), U(v3)) )
 #print( round(grad_U(v1),3) ); done; #print( round(grad_U(v2),3) ); print( round(grad_U(v3),3) );done
 #print( round(s(v1),3) ); print( round(s(v2),3) ); print( round(s(v3),3) );done
+#( round(s(v1),3) ); ( round(s(v2),3) ); ( round(s(v3),3) );done
 
 #eps/sd < 2 => eps < 2*sd
 #done
@@ -345,11 +365,13 @@ v3 <- rep(0, L*(k+n.off))
 
 if (FALSE) { # check gradient
 #w <- L*k+1
-sapply(1:(L*(k+n.off)-2), function(w) {
+sapply(1:(L*(k+n.off)), function(w) {
 	cat("w=",w,"\n")
-	eps<-0.0001; print( c( (U(c(v1[1:w],v1[w+1]+eps,v1[(w+2):length(v1)]))-U(v1))/eps, grad_U(v1)[w+1]) )
-	eps<-0.0001; print( c( (U(c(v2[1:w],v2[w+1]+eps,v2[(w+2):length(v2)]))-U(v2))/eps, grad_U(v2)[w+1]) )
-	eps<-0.0001; print( c( (U(c(v3[1:w],v3[w+1]+eps,v3[(w+2):length(v3)]))-U(v3))/eps, grad_U(v3)[w+1]) )
+	e <- rep(0, length(v1))
+	e[w] <- 0.0001
+	print( c( (U(v1+e)-U(v1))/e[w], grad_U(v1)[w]) )
+	print( c( (U(v2+e)-U(v2))/e[w], grad_U(v2)[w]) )
+	print( c( (U(v3+e)-U(v3))/e[w], grad_U(v3)[w]) )
 })
 done
 }
@@ -368,7 +390,7 @@ sapply(1:length(nz), function(i){ Mnz[i,1:Nnz[i]] <<- nz[[i]] })
 Wnz <- matrix(0, nrow=length(nz), ncol=max(Nnz))
 sapply(1:length(nz), function(i){ Wnz[i,1:Nnz[i]] <<- weights[i,nz[[i]]] })
 
-if (FALSE) {
+if (TRUE) {
 t1 <- proc.time()
 #for (i in 1:1) U(v1) #print(round(U(v1),2))
 #for (i in 1:1) print(round(grad_U(v1),2))
@@ -381,13 +403,15 @@ if (TRUE) {
 source("R/spline_cov.R")
 
 set.seed(1983)
-Niter <- 100
-samples <- matrix(0, nrow=Niter, ncol=L*(k+n.off))
+Niter <- 500
+
+fit.L <- L
+samples <- matrix(0, nrow=Niter, ncol=fit.L*(k+n.off))
 
 t1 <- proc.time()
 for (i in 1:1) fit <- spline_cov(prior=1,
-	n=n, k=k, y=y, L=L, Nnz=Nnz, Mnz=Mnz, Wnz=Wnz,
-  step_e=0.1, step_L=50, inits=v1, Niter=Niter, samples=samples)
+	n=n, k=k, y=y, L=fit.L, Nnz=Nnz, Mnz=Mnz, Wnz=Wnz,
+  step_e=0.1, step_L=25, inits=v1, Niter=Niter, samples=samples)
 print(proc.time()-t1)
 
 res <- mcmc(matrix(fit$samples, nrow=Niter, ncol=L*(k+n.off)))
@@ -395,25 +419,26 @@ res <- mcmc(matrix(fit$samples, nrow=Niter, ncol=L*(k+n.off)))
 
 start <- v1
 step.e <- 0.5
-step.L <- 2 #round(1/step.e)
+step.L <- 5 #round(1/step.e)
 print(c(step.e, step.L, step.L*step.e))
 
 set.seed(1983)
-nsamples <- 10
+nsamples <- 20
 samples <- matrix(0, nrow=nsamples, ncol=L*(k+n.off))
 current <- start
 acc <- 0
 for (i in 1:nsamples) {
 	res <- HMC(U, grad_U, step.e, step.L, current, s=s)
+	#res <- HMC(U, grad_U, step.e, step.L, current, M=M)
 	current <- res$val
 #print(c(res$acc,current))
 	samples[i,] <- current
 	acc <- acc+res$acc
 }
-mcmc.samples <- mcmc(samples[round(nsamples/2):nsamples,])
+mcmc.samples <- mcmc(samples) #samples[round(nsamples/2):nsamples,])
 cat("HMC acceptance rate:");print(acc/nsamples)
 print(summary(mcmc.samples))
-print(acf(mcmc.samples,plot=FALSE))
+#print(acf(mcmc.samples,plot=FALSE))
 cat("Effective sample size:\n");print(effectiveSize(mcmc.samples))
 
 }

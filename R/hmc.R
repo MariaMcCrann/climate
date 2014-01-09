@@ -2,9 +2,16 @@
 require(coda)
 require(MASS)
 
-"HMC" <- function(U, grad_U, epsilon, L, current_q, s) {
+"HMC" <- function(U, grad_U, epsilon, L, current_q, s, M) {
+	if (!missing(s) && !missing(M)) { stop("Only one of s() or M() should be specified.") }
 	q <- current_q
 	p <- rnorm(length(q), 0, 1)  # independent std normal variates
+	if (!missing(M)) {
+		cholM <- M(q)
+		invM <- chol2inv(cholM)
+		p <- t(cholM) %*% p
+#print(round(invM[1:10,1:10],2))
+	}
 	current_p <- p
 
 	if (!missing(s)) { # different step sizes
@@ -18,7 +25,11 @@ require(MASS)
 	# alternate full steps for position and momentum
 	for (i in 1:L) {
 		# make a full step for the position
-		q <- q + epsilon * p
+		if (!missing(M)) {
+			q <- q + epsilon * invM %*% p
+		} else {
+			q <- q + epsilon * p
+		}
 		# make a full step for the momentum, except at the end of trajectory
 		if (i != L) {
 			p <- p - epsilon * grad_U(q)
@@ -35,9 +46,14 @@ require(MASS)
 
 	# evaluate potentail and kinetic energies at start and end of trajectory
 	proposed_U <- U(q)
-	proposed_K <- sum(p^2)/2
 	current_U <- U(current_q)
-	current_K <- sum(current_p^2)/2
+	if (!missing(M)) {
+		proposed_K <- t(p) %*% invM %*% p/2
+		current_K <- t(current_p) %*% invM %*% current_p/2
+	} else {
+		proposed_K <- sum(p^2)/2
+		current_K <- sum(current_p^2)/2
+	}
 
 	# accept or reject the state at end of trajectory, returning either
 	# the position at the end of the trajectory or the initial position

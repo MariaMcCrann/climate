@@ -3,7 +3,7 @@
 #include <math.h>
 #include "model.h"
 #include "hmc.h"
-#include "inline.h"
+#include "utils.h"
 
 #include <R.h>
 #include <R_ext/Lapack.h>
@@ -33,19 +33,21 @@ public:
 
   virtual int  num_params() const;
 	virtual bool log_kernel(const double *theta, double *lp, bool do_lik=true, bool do_pri=true);
-	virtual bool grad_lk(const double *theta, double *grad);
+	virtual bool grad_lk(const double *theta, double *grad, const int row=-1);
 	virtual bool scales(const double *theta, double *s);
 
 	void fillR_i(int irow, const double *diag, const double *offd);
+	bool obs_info(const double *theta);
 
 private:
 	const Prior *mPrior;
 	const Data  *mData;
-	int          mKTri;       // number of upper triangular elements
-	int          mNumPerL;    // number of params for each basis function
-	int          mNumParams;  // total number of params
-	double      *mR_i;        // [k,k] covariance
-	double      *mInvR_i;     // [k,k] inverse covariance
+	int          mKTri;     // number of upper triangular elements
+	int          mNPerL;    // number of params for each basis function
+	int          mNParams;  // total number of params
+	double      *mR_i;      // [k,k] covariance
+	double      *mInvR_i;   // [k,k] inverse covariance
+	double      *mObsInfo;  // [mNParams,mNParams] observed Fisher information
 };
 
 ModelSplineCov::ModelSplineCov(const Prior *prior, const Data *data) {
@@ -53,23 +55,27 @@ ModelSplineCov::ModelSplineCov(const Prior *prior, const Data *data) {
 	mData = data;
 
 	mKTri = mData->k*(mData->k-1)/2;
-	mNumPerL = mData->k+mKTri;
-	mNumParams = mData->L*mNumPerL;
+	mNPerL = mData->k+mKTri;
+	mNParams = mData->L*mNPerL;
 
 	mR_i = (double *)malloc(sizeof(double)*mData->k*mData->k);
 	for (int i = 0; i < mData->k*mData->k; i++) mR_i[i] = 0;
 
 	mInvR_i = (double *)malloc(sizeof(double)*mData->k*mData->k);
 	for (int i = 0; i < mData->k*mData->k; i++) mInvR_i[i] = 0;
+
+	mObsInfo = (double *)malloc(sizeof(double)*mNParams*mNParams);
+	for (int i = 0; i < mNParams*mNParams; i++) mObsInfo[i] = 0;
 }
 
 ModelSplineCov::~ModelSplineCov() {
 	free(mR_i);
 	free(mInvR_i);
+	free(mObsInfo);
 }
 
 int ModelSplineCov::num_params() const {
-	return(mNumParams);
+	return(mNParams);
 }
 
 void ModelSplineCov::fillR_i(int irow, const double *diag, const double *offd) {
@@ -100,6 +106,28 @@ void ModelSplineCov::fillR_i(int irow, const double *diag, const double *offd) {
 		}
 	}
 
+}
+
+bool ModelSplineCov::obs_info(const double *theta) {
+	int irow;
+	int i,j;
+
+	// initialize observed info
+	for (i = 0; i < mNParams*mNParams; i++) mObsInfo[i] = 0;
+
+	double grad[mNParams];
+	for (irow = 0; irow < mData->n; irow++) {
+		grad_lk(theta, grad, irow);
+
+		// add to info
+		for (i = 0; i < mNParams; i++) {
+			for (j = i; j < mNParams; j++) {
+				mObsInfo[i + j*mNParams] += grad[i]*grad[j];
+			}
+		}
+	}
+
+	return(true);
 }
 
 bool ModelSplineCov::log_kernel(const double *theta, double *lp, bool do_lik, bool do_pri) {
@@ -169,7 +197,7 @@ for (k1 = 0; k1 < mData->k; k1++) {
 
 
 	if (do_pri) { // prior
-		for (i = 0; i < mNumParams; i++) {
+		for (i = 0; i < mNParams; i++) {
 			lpri += pow(theta[i],2);
 		}
 		lpri *= -0.5/pow(mPrior->sd, 2);
@@ -181,7 +209,7 @@ for (k1 = 0; k1 < mData->k; k1++) {
 	return(true);
 }
 
-bool ModelSplineCov::grad_lk(const double *theta, double *grad) {
+bool ModelSplineCov::grad_lk(const double *theta, double *grad, int row) {
 	int i,j,k;
 	int c;
 	int iL,irow;
@@ -208,13 +236,25 @@ bool ModelSplineCov::grad_lk(const double *theta, double *grad) {
 	double d;
 	double P[mData->k*mData->k];
 
-	// start with prior component
-	for (i = 0; i < mNumParams; i++) {
-		grad[i] = -theta[i]/mPrior->var;
+	int row_l = 0;
+	int row_u = mData->n;
+
+	if (row >= 0) {
+		// use a specific row only from likelihood
+		row_l = row;
+		row_u = row+1;
+		for (i = 0; i < mNParams; i++) {
+			grad[i] = 0;
+		}
+	} else {
+		// start with prior component
+		for (i = 0; i < mNParams; i++) {
+			grad[i] = -theta[i]/mPrior->var;
+		}
 	}
 
 	// add components from likelihood
-	for (irow = 0; irow < mData->n; irow++) {
+	for (irow = row_l; irow < row_u; irow++) {
 
 		// fill in R_i
 		fillR_i(irow, diag, offd);
@@ -314,6 +354,24 @@ for (int a = 0; a < mData->k; a++) { for (int b = 0; b < mData->k; b++) { MSG("%
 }
 
 bool ModelSplineCov::scales(const double *theta, double *s) {
+	int i;
+
+	// use observed info for scales
+	obs_info(theta);
+
+	// invert info
+	if (chol2inv(mNParams, mObsInfo) != 0) return(false);
+
+	// set scales
+	for (i = 0; i < mNParams; i++) {
+		s[i] = sqrt(mObsInfo[i + i*mNParams]);
+	}
+
+	return(true);
+}
+
+#if 0
+bool ModelSplineCov::scales(const double *theta, double *s) {
 	int i,j,k;
 	int c;
 	int iL,irow;
@@ -339,7 +397,7 @@ bool ModelSplineCov::scales(const double *theta, double *s) {
 	double A[mData->k*mData->k];
 
 	// initialize scales
-	for (i = 0; i < mNumParams; i++) {
+	for (i = 0; i < mNParams; i++) {
 		s[i] = 0;
 	}
 
@@ -431,12 +489,13 @@ bool ModelSplineCov::scales(const double *theta, double *s) {
 	}
 
 	// SD scale
-	for (i = 0; i < mNumParams; i++) {
+	for (i = 0; i < mNParams; i++) {
 		s[i] = 1/sqrt(0.5*s[i] + 1/mPrior->var);
 	}
 
 	return(true);
 }
+#endif
 
 extern "C" {
 
