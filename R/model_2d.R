@@ -61,14 +61,14 @@ graphics.off()}
 	weights
 }
 
-if (FALSE) {
+if (TRUE) {
 	# let's subset the data...
 	z <- z[,c(1,5,9)]
 
 	#keep <- T <= 40
 	#keep <- c(1, 1+sort( sample.int(nrow(z)-1, size=round(nrow(z)/8)) ))
-	keep <- c(1, round(seq(2, nrow(z), len=round(nrow(z)/8))) )
-	z <- z[keep,]; d <- d[keep]; f <- f[keep]; T <- T[keep]
+	#keep <- c(1, round(seq(2, nrow(z), len=round(nrow(z)/8))) )
+	#z <- z[keep,]; d <- d[keep]; f <- f[keep]; T <- T[keep]
 }
 
 zstar <- sqrt(d) * z
@@ -404,10 +404,12 @@ if (FALSE) {
 	list(L=L, ini=ini, sp=sp, fitsum=fitsum, DIC=DIC, pD=pD)
 } else { # end do stan
 
-	Niter <- 500
+	Niter <- 50
+	Nburn <- 10
 	Nchains <- 3
 	Ncores  <- 3
 	Nparam <- L*(dat$k + dat$k*(dat$k-1)/2)
+	prior.sd <- 1
 
 	if (!has_starts) {
 		# get initial values with BFGS
@@ -415,11 +417,11 @@ if (FALSE) {
 		t1 <- proc.time()
 		bfgs <- optim(par=init,
 			fn=function(x) {
-				lk <- spline_cov_lk(prior=1, n=dat$n, k=dat$k, y=z, L=dat$L, Nnz=dat$Nnz, Mnz=dat$Mnz, Wnz=dat$Wnz, eval=x)
+				lk <- spline_cov_lk(prior=prior.sd, n=dat$n, k=dat$k, y=z, L=dat$L, Nnz=dat$Nnz, Mnz=dat$Mnz-1, Wnz=dat$Wnz, eval=x)$lk
 				-lk
 			},
 			gr=function(x) {
-				gr <- spline_cov_gr(prior=1, n=dat$n, k=dat$k, y=z, L=dat$L, Nnz=dat$Nnz, Mnz=dat$Mnz, Wnz=dat$Wnz, eval=x)
+				gr <- spline_cov_gr(prior=prior.sd, n=dat$n, k=dat$k, y=z, L=dat$L, Nnz=dat$Nnz, Mnz=dat$Mnz-1, Wnz=dat$Wnz, eval=x)
 				-gr
 			},
 		method="BFGS", control=list(maxit=5000))
@@ -433,16 +435,35 @@ if (FALSE) {
 	samples <- matrix(0, nrow=Niter, ncol=Nparam)
 
 	t1 <- proc.time()
-	res <- mcmc.list( mclapply(1:Nchains, mc.cores=Ncores,
+
+	fits <- mclapply(1:Nchains, mc.cores=Ncores,
 		function(i) {
 		set.seed(311*i);
-		fit <- spline_cov(prior=1,
-		  n=dat$n, k=dat$k, y=z, L=dat$L, Nnz=dat$Nnz, Mnz=dat$Mnz, Wnz=dat$Wnz,
+		fit <- spline_cov(prior=prior.sd,
+		  n=dat$n, k=dat$k, y=z, L=dat$L, Nnz=dat$Nnz, Mnz=dat$Mnz-1, Wnz=dat$Wnz,
 		  step_e=ss, step_L=it, inits=init, Niter=Niter, samples=samples, verbose=TRUE)
+	})
 
-		res <- mcmc(matrix(fit$samples, nrow=Niter, ncol=Nparam))
-	}) )
-	print(proc.time()-t1)
+	# compute DIC
+
+	# get samples, discarding burn
+	sub <- -(1:Nburn)
+	res <- vector("list", Nchains)
+	dev <- vector("list", Nchains)
+	for (i in 1:Nchains) {
+		res[[i]] <- matrix(fits[[i]]$samples, nrow=Niter)[sub,]
+		dev[[i]] <- matrix(fits[[i]]$deviance, nrow=Niter)[sub,]
+	}
+
+  # posterior mean
+  pmean <- colMeans( do.call(rbind, res) )
+  dmean <- mean( unlist(dev) )
+
+  Dbar  <- dmean
+  Dtbar <- -2*spline_cov_lk(prior=prior.sd, n=dat$n, k=dat$k, y=z, L=dat$L, Nnz=dat$Nnz, Mnz=dat$Mnz-1, Wnz=dat$Wnz, eval=pmean)$llik
+  pD    <- Dbar - Dtbar
+	DIC   <- Dbar + pD
+
 
 	# save fit
 	if (use_lin) {
@@ -454,18 +475,23 @@ if (FALSE) {
 	} else {
 		fname <- paste0("L",L,"_",WHICH_CDAT,".RData")
 	}
-	save(L, res, bfgs, uf, ufw, knots, file=paste0("fitsums/fitsum_",fname))
+	save(L, fits, res, bfgs, DIC, pD, uf, ufw, knots, file=paste0("fitsums/fitsum_",fname))
 
-	list(L=L, res=res, bfgs=bfgs)
+	list(L=L, fits=fits, res=res, bfgs=bfgs, DIC=DIC, pD=pD)
 } # don't do stan
 
 })
 
 }
 
-fit <- do_fit(0.05, 25) #, good_starts)
+#fit <- do_fit(0.05, 25) #, good_starts)
 #fit <- do_fit(0.025, 5) #, good_starts)
 #fit <- do_fit(0.025, 2^9) #, good_starts)
+
+#fit1 <- do_fit(0.025, 5) #, good_starts)
+#fit2 <- do_fit(0.025, 10) #, good_starts)
+#fit3 <- do_fit(0.025, 15) #, good_starts)
+fit4 <- do_fit(0.025, 20) #, good_starts)
 
 #eps <- .0001; f1 <- do_fit(eps, 10*eps)
 #eps <- .00001; f2 <- do_fit(eps, 10*eps)

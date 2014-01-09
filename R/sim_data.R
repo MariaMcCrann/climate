@@ -4,7 +4,7 @@ library(fda)
 source("R/hmc.R")
 
 set.seed(03172000)
-n <- 1000
+n <- 100
 t <- seq(0, 1, len=n)
 k <- 3
 n.off <- k*(k-1)/2
@@ -271,7 +271,7 @@ M <- function(x) { # cholesky of mass matrix M
 }
 
 s <- function(x) { # variable scales
-	A <- Reduce('+', lapply(1:n, function(row) { tcrossprod(grad_U(x,row)) }))
+	A <- Reduce('+', lapply(1:n, function(row) { tcrossprod(grad_U(x,row)) })) + diag(1/prior.theta_sd^2, L*(k+n.off))
 	B <- chol2inv(chol(A))
 
 	return( sqrt(diag( B )) )
@@ -376,20 +376,6 @@ sapply(1:(L*(k+n.off)), function(w) {
 done
 }
 
-# capture which are non-zero
-nz <- apply(weights, 1, function(x){ which(x!=0) })
-
-# get number of non-zeros
-Nnz <- sapply(1:length(nz), function(i){ length(nz[[i]]) })
-
-# get non-zero indices
-Mnz <- matrix(0, nrow=length(nz), ncol=max(Nnz))
-sapply(1:length(nz), function(i){ Mnz[i,1:Nnz[i]] <<- nz[[i]] })
-
-# get non-zero weights
-Wnz <- matrix(0, nrow=length(nz), ncol=max(Nnz))
-sapply(1:length(nz), function(i){ Wnz[i,1:Nnz[i]] <<- weights[i,nz[[i]]] })
-
 if (TRUE) {
 t1 <- proc.time()
 #for (i in 1:1) U(v1) #print(round(U(v1),2))
@@ -402,19 +388,48 @@ print(proc.time()-t1)
 if (TRUE) {
 source("R/spline_cov.R")
 
-set.seed(1983)
-Niter <- 500
+"sim_fit" <- function(fitL, step_e, step_L) {
+	# construct weights
+	basis   <- create.bspline.basis(c(min(t),max(t)),norder=4,nbasis=fitL)
+	knots   <- knots(basis)
+	weights <- getbasismatrix(t, basis, nderiv=0)
 
-fit.L <- L
-samples <- matrix(0, nrow=Niter, ncol=fit.L*(k+n.off))
+	# capture which are non-zero
+	nz <- apply(weights, 1, function(x){ which(x!=0) })
 
-t1 <- proc.time()
-for (i in 1:1) fit <- spline_cov(prior=1,
-	n=n, k=k, y=y, L=fit.L, Nnz=Nnz, Mnz=Mnz, Wnz=Wnz,
-  step_e=0.1, step_L=25, inits=v1, Niter=Niter, samples=samples)
-print(proc.time()-t1)
+	# get number of non-zeros
+	Nnz <- sapply(1:length(nz), function(i){ length(nz[[i]]) })
 
-res <- mcmc(matrix(fit$samples, nrow=Niter, ncol=L*(k+n.off)))
+	# get non-zero indices
+	Mnz <- matrix(0, nrow=length(nz), ncol=max(Nnz))
+	sapply(1:length(nz), function(i){ Mnz[i,1:Nnz[i]] <<- nz[[i]] })
+
+	# get non-zero weights
+	Wnz <- matrix(0, nrow=length(nz), ncol=max(Nnz))
+	sapply(1:length(nz), function(i){ Wnz[i,1:Nnz[i]] <<- weights[i,nz[[i]]] })
+
+	Niter <- 100
+
+	samples <- matrix(0, nrow=Niter, ncol=fitL*(k+n.off))
+
+	inits <- rep(0, fitL*(k+n.off))
+	t1 <- proc.time()
+	fit <- spline_cov(prior=1,
+		n=n, k=k, y=y, L=fitL, Nnz=Nnz, Mnz=Mnz-1, Wnz=Wnz,
+	  step_e=step_e, step_L=step_L, inits=inits, Niter=Niter, samples=samples)
+	print(proc.time()-t1)
+
+	dic <- spline_cov_dic(fit, 100)
+	res <- mcmc( matrix(fit$samples, nrow=Niter) )
+
+	list(fit=fit, res=res, dic=dic)
+}
+
+fit1 <- sim_fit(5, 0.01, 25)
+fit2 <- sim_fit(10, 0.01, 25)
+fit3 <- sim_fit(15, 0.01, 25)
+fit4 <- sim_fit(20, 0.01, 25)
+
 } else {
 
 start <- v1

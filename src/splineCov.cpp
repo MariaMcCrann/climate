@@ -32,7 +32,7 @@ public:
 	~ModelSplineCov();
 
   virtual int  num_params() const;
-	virtual bool log_kernel(const double *theta, double *lp, bool do_lik=true, bool do_pri=true);
+	virtual bool log_kernel(const double *theta, double *lp, double *llik=NULL, double *lpri=NULL, bool do_lik=true, bool do_pri=true);
 	virtual bool grad_lk(const double *theta, double *grad, const int row=-1);
 	virtual bool scales(const double *theta, double *s);
 
@@ -130,9 +130,9 @@ bool ModelSplineCov::obs_info(const double *theta) {
 	return(true);
 }
 
-bool ModelSplineCov::log_kernel(const double *theta, double *lp, bool do_lik, bool do_pri) {
-	double llik = 0;
-	double lpri = 0;
+bool ModelSplineCov::log_kernel(const double *theta, double *lk, double *llik, double *lpri, bool do_lik, bool do_pri) {
+	double lik = 0;
+	double pri = 0;
 
 	int irow;
 	int i,j;
@@ -178,7 +178,7 @@ for (k1 = 0; k1 < mData->k; k1++) {
 
 			// add in -t(weights) colSums(diag) component
 			for (i = 0; i < mData->Nnz[irow]; i++) {
-				llik -= mData->Wnz[irow + i*mData->n] * csd[mData->Mnz[irow + i*mData->n]];
+				lik -= mData->Wnz[irow + i*mData->n] * csd[mData->Mnz[irow + i*mData->n]];
 			}
 
 			// add in -0.5*t(y[i,]) %*% chol2inv(R_i) %*% y[i,] component
@@ -190,7 +190,7 @@ for (k1 = 0; k1 < mData->k; k1++) {
 			       /*lda*/&mData->k, /*B*/bs, /*ldb*/&mData->k);
 
 			for (i = 0; i < mData->k; i++) {
-				llik -= 0.5*pow(bs[i],2);
+				lik -= 0.5*pow(bs[i],2);
 			}
 		}
 	}
@@ -198,13 +198,16 @@ for (k1 = 0; k1 < mData->k; k1++) {
 
 	if (do_pri) { // prior
 		for (i = 0; i < mNParams; i++) {
-			lpri += pow(theta[i],2);
+			pri += pow(theta[i],2);
 		}
-		lpri *= -0.5/pow(mPrior->sd, 2);
+		pri *= -0.5/pow(mPrior->sd, 2);
 	}
 
 	// add likelihood and prior components
-	*lp = llik + lpri;
+	*lk = lik + pri;
+
+	if (llik != NULL) *llik = lik;
+	if (lpri != NULL) *lpri = pri;
 
 	return(true);
 }
@@ -359,6 +362,11 @@ bool ModelSplineCov::scales(const double *theta, double *s) {
 	// use observed info for scales
 	obs_info(theta);
 
+	// add prior piece for diagonals
+	for (i = 0; i < mNParams; i++) {
+		mObsInfo[i + i*mNParams] += 1/mPrior->var;
+	}
+
 	// invert info
 	if (chol2inv(mNParams, mObsInfo) != 0) return(false);
 
@@ -369,133 +377,6 @@ bool ModelSplineCov::scales(const double *theta, double *s) {
 
 	return(true);
 }
-
-#if 0
-bool ModelSplineCov::scales(const double *theta, double *s) {
-	int i,j,k;
-	int c;
-	int iL,irow;
-	int k1,k2;
-	int index;
-	double d;
-
-	const double *diag = theta;
-	const double *offd = theta + mData->k*mData->L;
-
-	double *s_d = s;
-	double *s_o = s + mData->k*mData->L;
-
-	char   cside = 'L';
-	char   cuplo = 'U';
-	char   ctran = 'N';
-	char   cdiag = 'N';
-	double done  = 1;
-	double dzero = 0;
-
-	double invSigma[mData->k*mData->k];
-	double P[mData->k*mData->k];
-	double A[mData->k*mData->k];
-
-	// initialize scales
-	for (i = 0; i < mNParams; i++) {
-		s[i] = 0;
-	}
-
-	// add components from likelihood
-	for (irow = 0; irow < mData->n; irow++) {
-
-		// fill in R_i
-		fillR_i(irow, diag, offd);
-
-		// invert R_i by solving R_i b = diag(k)
-		for (i = 0; i < mData->k*mData->k; i++) { mInvR_i[i] = 0; }
-		for (i = 0; i < mData->k; i++) { mInvR_i[i + i*mData->k] = 1; }
-		cside = 'L'; cuplo = 'U'; ctran = 'N'; cdiag = 'N';
-		dtrsm_(&cside, &cuplo, &ctran, &cdiag,
-		       /*m*/&mData->k, /*n*/&mData->k, /*alpha*/&done, /*A*/mR_i,
-		       /*lda*/&mData->k, /*B*/mInvR_i, /*ldb*/&mData->k);
-
-		// compute invSigma = invR_i x t(invR_i)
-		for (i = 0; i < mData->k*mData->k; i++) { invSigma[i] = mInvR_i[i]; }
-		cside = 'R'; cuplo = 'U'; ctran = 'T'; cdiag = 'N';
-		dtrmm_(&cside, &cuplo, &ctran, &cdiag,
-		       /*m*/&mData->k, /*n*/&mData->k, /*alpha*/&done, /*A*/mInvR_i,
-		       /*lda*/&mData->k, /*B*/invSigma, /*ldb*/&mData->k);
-
-		for (i = 0; i < mData->Nnz[irow]; i++) {
-			index = irow + i*mData->n;
-			iL = mData->Mnz[index];
-
-			// diagonal elements
-			for (k1 = 0; k1 < mData->k; k1++) {
-				// compute R_i[k1,k1]*weights[irow,iL]
-				d = mR_i[k1 + k1*mData->k] * mData->Wnz[index];
-
-				// compute D x R_i, where D is 0 except for D[k1,k1] = d
-				for (j = 0; j < mData->k*mData->k; j++) { P[j] = 0; }
-				for (j = k1; j < mData->k; j++) {
-					P[k1 + j*mData->k] = d * mR_i[k1 + j*mData->k];
-					P[j + k1*mData->k] += P[k1 + j*mData->k];
-				}
-
-				// compute A = invSigma x P
-				ctran = 'N';
-				dgemm_(&ctran, &ctran,
-				       /*m*/&mData->k, /*n*/&mData->k, /*k*/&mData->k, /*alpha*/&done,
-				       /*A*/invSigma, /*lda*/&mData->k, /*B*/P, /*ldb*/&mData->k,
-				       /*beta*/&dzero, /*C*/A, /*ldc*/&mData->k);
-
-				// add trace to scale
-				for (k = 0; k < mData->k; k++) {
-					for (j = 0; j < mData->k; j++) {
-						s_d[k1 + iL*mData->k] += A[k + j*mData->k] * A[j + k*mData->k];
-					}
-				}
-
-			}
-
-			// upper triangular elements
-			c = 0;
-			for (k2 = 1; k2 < mData->k; k2++) {
-				for (k1 = 0; k1 < k2; k1++) {
-					d = mData->Wnz[index];
-
-					// compute t(D) x R_i, where D is 0 except for D[k1,k2] = d
-					for (j = 0; j < mData->k*mData->k; j++) { P[j] = 0; }
-					for (j = 0; j < mData->k; j++) {
-						P[k2 + j*mData->k] = d * mR_i[k1 + j*mData->k];
-						P[j + k2*mData->k] += P[k2 + j*mData->k];
-					}
-
-					// compute A = invSigma x P
-					ctran = 'N';
-					dgemm_(&ctran, &ctran,
-					       /*m*/&mData->k, /*n*/&mData->k, /*k*/&mData->k, /*alpha*/&done,
-					       /*A*/invSigma, /*lda*/&mData->k, /*B*/P, /*ldb*/&mData->k,
-					       /*beta*/&dzero, /*C*/A, /*ldc*/&mData->k);
-
-					// add trace to scale
-					for (k = 0; k < mData->k; k++) {
-						for (j = 0; j < mData->k; j++) {
-							s_o[c + iL*mKTri] += A[k + j*mData->k] * A[j + k*mData->k];
-						}
-					}
-
-					c++;
-				}
-			}
-
-		}
-	}
-
-	// SD scale
-	for (i = 0; i < mNParams; i++) {
-		s[i] = 1/sqrt(0.5*s[i] + 1/mPrior->var);
-	}
-
-	return(true);
-}
-#endif
 
 extern "C" {
 
@@ -510,7 +391,7 @@ void spline_cov_fit(
 	// sampler 
 	double *step_e, int *step_L,
 	double *inits,
-	int *Niter, double *samples,
+	int *Niter, double *samples, double *deviance,
 	bool *verbose
 ) {
 
@@ -547,7 +428,7 @@ void spline_cov_fit(
 */
 
 	// get samples
-	HMC *sampler = new HMC(m, (const double *)inits, samples);
+	HMC *sampler = new HMC(m, (const double *)inits, samples, deviance);
 	sampler->sample(*Niter, *step_e, *step_L, verbose);
 
 	delete sampler;
@@ -567,7 +448,7 @@ void spline_cov_lk(
 	// evaluation point
 	double *eval,
 	// result
-	double *lk
+	double *lk, double *llik, double *lpri
 ) {
 
 	// prior
@@ -588,7 +469,7 @@ void spline_cov_lk(
 	// model
 	Model *m = new ModelSplineCov((const ModelSplineCov::Prior *)model_prior, (const ModelSplineCov::Data *)model_data);
 
-	m->log_kernel((const double *)eval, lk);
+	m->log_kernel((const double *)eval, lk, llik, lpri);
 
 	delete m;
 	delete model_prior;
