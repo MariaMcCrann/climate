@@ -8,7 +8,7 @@
 	dyn.load("RsplineCov.so")
 
 	fit <- .C("spline_cov_fit",
-		prior=as.double(prior),
+		prior=as.double(data$prior),
 		n=as.integer(data$n), k=as.integer(data$k), y=as.double(data$y),
 		L=as.integer(data$L), Nnz=as.integer(data$Nnz), Mnz=as.integer(data$Mnz), Wnz=as.double(data$Wnz),
 		step_e=as.double(step_e), step_L=as.integer(step_L),

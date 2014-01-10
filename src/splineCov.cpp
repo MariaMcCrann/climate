@@ -429,7 +429,7 @@ void spline_cov_fit(
 
 	// get samples
 	HMC *sampler = new HMC(m, (const double *)inits, samples, deviance);
-	sampler->sample(*Niter, *step_e, *step_L, verbose);
+	sampler->sample(*Niter, *step_e, *step_L, *verbose);
 
 	delete sampler;
 	delete m;

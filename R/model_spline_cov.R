@@ -7,14 +7,14 @@ source("R/load_data2.R")
 source("R/smooth_corr.R")
 source("R/spline_cov.R")
 
-if (TRUE) {
+if (FALSE) {
 	# let's subset the data...
 	z <- z[,c(1,5,9)]
 
 	#keep <- T <= 40
 	#keep <- c(1, 1+sort( sample.int(nrow(z)-1, size=round(nrow(z)/8)) ))
-	keep <- c(1, round(seq(2, nrow(z), len=round(nrow(z)/8))) )
-	z <- z[keep,]; d <- d[keep]; f <- f[keep]; T <- T[keep]
+	#keep <- c(1, round(seq(2, nrow(z), len=round(nrow(z)/8))) )
+	#z <- z[keep,]; d <- d[keep]; f <- f[keep]; T <- T[keep]
 }
 
 # normalize the data
@@ -56,7 +56,8 @@ k  <- ncol(zstar)
 	data <- list(prior=1,
 		n=n, k=k, y=zstar,
 		L=L, weights=weights,
-		Nnz=Nnz, Mnz=Mnz-1, Wnz=Wnz
+		Nnz=Nnz, Mnz=Mnz-1, Wnz=Wnz,
+		uf=uf, ufw=ufw, knots=knots
 	)
 
 }
@@ -78,7 +79,11 @@ k  <- ncol(zstar)
 	cat("Time to inits: (conv=",bfgs$conv,")\n",sep="")
 	print(proc.time()-t1)
 
-	bfgs
+	if (bfgs$conv != 0) {
+		stop("Bad convergence")
+	}
+
+	bfgs$par
 }
 
 "do_fit" <- function(data, Niter=100, Nburn=50, step_e=0.01, step_L=1, starts) {
@@ -93,7 +98,7 @@ k  <- ncol(zstar)
 	Nparam <- data$L*(data$k + data$k*(data$k-1)/2)
 
 	if (!has_starts) {
-		init <- get_starts(data)$par
+		init <- get_starts(data)
 	} else {
 		init <- starts
 	}
@@ -102,8 +107,10 @@ k  <- ncol(zstar)
 	fits <- mclapply(1:Nchains, mc.cores=Ncores,
 		function(i) {
 		set.seed(311*i);
-		fit <- spline_cov(data=data, step_e=ss, step_L=it, inits=init, Niter=Niter, verbose=TRUE)
+		fit <- spline_cov(data=data, step_e=step_e, step_L=step_L, inits=init, Niter=Niter, verbose=TRUE)
 	})
+	cat("Time to samples:\n")
+	print(proc.time()-t1)
 
 	# compute DIC
 
@@ -121,23 +128,48 @@ k  <- ncol(zstar)
 	dmean <- mean( unlist(dev) )
 
 	Dbar  <- dmean
-	Dtbar <- -2*spline_cov_lk(prior=prior.sd, n=dat$n, k=dat$k, y=z, L=dat$L, Nnz=dat$Nnz, Mnz=dat$Mnz-1, Wnz=dat$Wnz, eval=pmean)$llik
+	Dtbar <- -2*spline_cov_lk(data=data, eval=pmean)$llik
 	pD    <- Dbar - Dtbar
 	DIC   <- Dbar + pD
 
 	# save fit
-	fname <- paste0("scL",L,"_",WHICH_CDAT,".RData")
-	save(data$L, fits, res, init, DIC, pD, uf, ufw, knots, file=paste0("fitsums/fitsum_",fname))
+	fname <- paste0("scL",data$L,"_",WHICH_CDAT,".RData")
+	save(data, fits, res, init, DIC, pD, file=paste0("fitsums/fitsum_",fname))
 
 	list(L=data$L, fits=fits, res=res, init=init, DIC=DIC, pD=pD)
 }
 
+if (FALSE) {
 #fit <- do_fit(0.05, 25) #, good_starts)
 #fit <- do_fit(0.025, 5) #, good_starts)
 #fit <- do_fit(0.025, 2^9) #, good_starts)
 
+Niter <- 20
+Nburn <- 5
+
 data5 <- get_data(5)
 init5 <- get_starts(data5)
+#fit5 <- do_fit(data=data5, Niter=Niter, Nburn=Nburn, step_e=0.25, step_L=5, starts=init5)
+
+data10 <- get_data(10)
+init10 <- get_starts(data10)
+#fit10 <- do_fit(data=data10, Niter=Niter, Nburn=Nburn, step_e=0.25, step_L=5, starts=init10)
+
+data15 <- get_data(15)
+init15 <- get_starts(data15)
+#fit15 <- do_fit(data=data15, Niter=Niter, Nburn=Nburn, step_e=0.25, step_L=5, starts=init15)
+
+data20 <- get_data(20)
+init20 <- get_starts(data20)
+#fit20 <- do_fit(data=data20, Niter=Niter, Nburn=Nburn, step_e=0.25, step_L=5, starts=init20)
+
+data25 <- get_data(25)
+init25 <- get_starts(data25)
+#fit25 <- do_fit(data=data25, Niter=Niter, Nburn=Nburn, step_e=0.25, step_L=5, starts=init25)
+
+data30 <- get_data(30)
+init30 <- get_starts(data30)
+#fit30 <- do_fit(data=data30, Niter=Niter, Nburn=Nburn, step_e=0.25, step_L=5, starts=init30)
 
 #fit1 <- do_fit(get_data(5), 0.025, 5) #, good_starts)
 #fit2 <- do_fit(0.025, 10) #, good_starts)
@@ -159,4 +191,4 @@ init5 <- get_starts(data5)
 #eps <- .0001; fs <- do_fit(eps, 1024*eps)
 
 #round(sapply(1:nrow(ufw),function(i){ 2*invlogit( sum(v3*ufw[i,]) )-1 }),2)
-
+}
