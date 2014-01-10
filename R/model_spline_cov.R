@@ -140,7 +140,7 @@ k  <- ncol(zstar)
 }
 
 # normal fit
-if (TRUE) {
+if (exists("WHICH_CDAT") && exists("THE_L")) {
 	Niter <- 500
 	Nburn <- 50
 
