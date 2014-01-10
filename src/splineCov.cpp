@@ -420,11 +420,12 @@ void spline_cov_fit(
 
 	double grad[m->num_params()];
 	m->grad_lk((const double*)inits, grad);
-	//for (int i = 0; i < m->num_params(); i++) MSG("%.2f ", grad[i]); MSG("\n");
+	for (int i = 0; i < m->num_params(); i++) MSG("%.2f ", grad[i]); MSG("\n");
 
 	double scales[m->num_params()];
 	m->scales((const double*)inits, scales);
-	for (int i = 0; i < m->num_params(); i++) MSG("%.2f ", scales[i]); MSG("\n");
+	//for (int i = 0; i < m->num_params(); i++) MSG("%.2f ", scales[i]); MSG("\n");
+	for (int i = 0; i < 5; i++) MSG("%.2f ", scales[i]); MSG("\n");
 */
 
 	// get samples

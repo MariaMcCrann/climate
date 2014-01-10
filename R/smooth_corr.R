@@ -14,6 +14,42 @@ if (!("cdata" %in% ls())) {
 	list(knots=knots, cor=cor)
 }
 
+# smooth covariance
+"smooth_cov" <- function(L, z, f, inc=0.025) {
+	knots <- seq(min(f), max(f), len=(max(f)-min(f))/inc)
+	Nknots <- length(knots)
+
+	Nk <- ncol(z)
+
+	resp.d <- matrix(NA, nrow=Nknots, ncol=Nk)
+	resp.o <- matrix(NA, nrow=Nknots, ncol=Nk*(Nk-1)/2)
+
+	for (i in 1:Nknots) {
+		Sigma <- cov(z[f >= (knots[i]-inc)&f <= (knots[i]+inc),])
+		cholSigma <- chol(Sigma)
+		resp.d[i,] <- log( diag(cholSigma) )
+		resp.o[i,] <- as.vector(cholSigma[upper.tri(cholSigma)])
+	}
+
+	Bspline.basis <- create.bspline.basis(c(min(f),max(f)),norder=4,nbasis=L)
+	weights <- getbasismatrix(knots, Bspline.basis, nderiv=0)
+
+	ests.d <- matrix(NA, nrow=Nk, ncol=L)
+	for (i in 1:Nk) {
+		fit <- lm(resp.d[,i] ~ 0+weights)
+		ests.d[i,] <- coef(fit)
+	}
+
+	ests.o <- matrix(NA, nrow=Nk*(Nk-1)/2, ncol=L)
+	for (i in 1:(Nk*(Nk-1)/2)) {
+		fit <- lm(resp.o[,i] ~ 0+weights)
+		ests.o[i,] <- coef(fit)
+	}
+
+
+	c(as.vector(ests.d), as.vector(ests.o))
+}
+
 # weights at specific values of f
 "get_weights" <- function(f, L, knots) {
 	# construct weights
@@ -79,7 +115,7 @@ if (!("cdata" %in% ls())) {
 }
 
 # get some rough least-squares estimates
-"ls_estimates_cholesky" <- function(sc, L) {
+"ls_estimates_cholesky" <- function(data, L) {
 	require(fda)
 
 	if (missing(L)) {
@@ -127,7 +163,8 @@ done
 sc <- smooth_corr(z)
 
 if (FALSE) {
+	cat("Getting LS estimates for L =",THE_L,"\n")
 	# test least squares estimates
 	#ests <- ls_estimates_Omega(sc, 5)
-	ests <- ls_estimates_cholesky(sc, 5)
+	ests <- ls_estimates_cholesky(data, THE_L)
 }

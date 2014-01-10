@@ -62,9 +62,12 @@ k  <- ncol(zstar)
 
 }
 
-"get_starts" <- function(data) {
+"get_starts" <- function(data, init) {
 	# get initial values with BFGS
-	init <- rep(0, data$L*(data$k+data$k*(data$k-1)/2))
+	if (missing(init)) {
+		init <- rep(0, data$L*(data$k+data$k*(data$k-1)/2))
+	}
+
 	t1 <- proc.time()
 	bfgs <- optim(par=init,
 		fn=function(x) {
@@ -141,18 +144,21 @@ k  <- ncol(zstar)
 
 # normal fit
 if (exists("WHICH_CDAT") && exists("THE_L")) {
-	Niter <- 500
-	Nburn <- 50
+	Niter <- 1000
+	Nburn <- 100
 
 	if (WHICH_CDAT == "ST") {
 		if (THE_L == 5) { step_e <- 0.05; step_L <- 5; }
 		else if (THE_L == 10) { step_e <- 0.01; step_L <- 10; }
-		else if (THE_L == 15) { step_e <- 0.00001; step_L <- 15; }
-		else if (THE_L == 20) { step_e <- 0.000001; step_L <- 20; }
+		else if (THE_L == 15) { step_e <- 0.01; step_L <- 25; }
+		else if (THE_L == 20) { step_e <- 0.005; step_L <- 50; }
+		#else if (THE_L == 15) { step_e <- 0.00001; step_L <- 15; }
+		#else if (THE_L == 20) { step_e <- 0.000001; step_L <- 20; }
 	}
 
-	load( paste0("inits/",WHICH_CDAT,"_L",THE_L,".RData") )
+	#load( paste0("inits/",WHICH_CDAT,"_L",THE_L,".RData") )
 	data <- get_data(THE_L)
+	inits <- smooth_cov(L=THE_L, z=zstar, f=f)
 	fit <- do_fit(data=data, Niter=Niter, Nburn=Nburn, step_e=step_e, step_L=step_L, starts=inits)
 }
 
