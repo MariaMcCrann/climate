@@ -151,7 +151,7 @@ if (TRUE) {
 		else if (THE_L == 20) { step_e <- 0.000001; step_L <- 20; }
 	}
 
-	load( paste0("inits/",WHICH_CDAT,"_L",THE_L,".RData")
+	load( paste0("inits/",WHICH_CDAT,"_L",THE_L,".RData") )
 	data <- get_data(THE_L)
 	fit <- do_fit(data=data, Niter=Niter, Nburn=Nburn, step_e=step_e, step_L=step_L, starts=inits)
 }
