@@ -139,6 +139,37 @@ k  <- ncol(zstar)
 	list(L=data$L, fits=fits, res=res, init=init, DIC=DIC, pD=pD)
 }
 
+# normal fit
+if (TRUE) {
+	Niter <- 500
+	Nburn <- 50
+
+	if (WHICH_CDAT == "ST") {
+		if (THE_L == 5) { step_e <- 0.05; step_L <- 5; }
+		else if (THE_L == 10) { step_e <- 0.01; step_L <- 10; }
+		else if (THE_L == 15) { step_e <- 0.00001; step_L <- 15; }
+		else if (THE_L == 20) { step_e <- 0.000001; step_L <- 20; }
+	}
+
+	load( paste0("inits/",WHICH_CDAT,"_L",THE_L,".RData")
+	data <- get_data(THE_L)
+	fit <- do_fit(data=data, Niter=Niter, Nburn=Nburn, step_e=step_e, step_L=step_L, starts=inits)
+}
+
+if (FALSE) {
+Niter <- 20
+Nburn <- 5
+
+	#load("inits/ST_L5.RData"); data <- get_data(5)
+	#load("inits/ST_L10.RData"); data <- get_data(10)
+	#load("inits/ST_L15.RData"); data <- get_data(15)
+	#load("inits/ST_L20.RData"); data <- get_data(20)
+	#fit5 <- do_fit(data=data, Niter=Niter, Nburn=Nburn, step_e=0.05, step_L=5, starts=inits)
+	#fit10 <- do_fit(data=data, Niter=Niter, Nburn=Nburn, step_e=0.01, step_L=5, starts=inits)
+	#fit15 <- do_fit(data=data, Niter=Niter, Nburn=Nburn, step_e=0.00001, step_L=10, starts=inits)
+	#fit20 <- do_fit(data=data, Niter=Niter, Nburn=Nburn, step_e=0.000001, step_L=1, starts=inits)
+}
+
 if (FALSE) {
 #fit <- do_fit(0.05, 25) #, good_starts)
 #fit <- do_fit(0.025, 5) #, good_starts)
