@@ -156,7 +156,7 @@ if (exists("WHICH_CDAT") && exists("THE_L")) {
 		if (THE_L == 5) {       Niter <- 100000;  thin <- Niter/10000; step_e <- 0.10; step_L <- 25; }
 		else if (THE_L == 10) { Niter <- 400000;  thin <- Niter/10000; step_e <- 0.04; step_L <- 5; }
 		else if (THE_L == 15) { Niter <- 900000;  thin <- Niter/10000; step_e <- 0.007; step_L <- 5; }
-		else if (THE_L == 20) { Niter <- 1600000; thin <- Niter/10000; step_e <- 0.00050; step_L <- 10; }
+		else if (THE_L == 20) { Niter <- 1600000; thin <- Niter/10000; step_e <- 0.00075; step_L <- 10; }
 		#else if (THE_L == 15) { step_e <- 0.00001; step_L <- 15; }
 		#else if (THE_L == 20) { step_e <- 0.000001; step_L <- 20; }
 #	}
