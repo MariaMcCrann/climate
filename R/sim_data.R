@@ -38,7 +38,7 @@ y <- t( sapply(1:n, function(i) {
 }) )
 
 # prior SD
-prior.theta_sd <- 1
+prior.theta_sd <- 100
 
 U.old <- function(x) {  # -log kernel(x)
 	theta.d <- matrix(x[1:(L*k)], nrow=k, ncol=L)
@@ -274,6 +274,7 @@ s <- function(x) { # variable scales
 	A <- Reduce('+', lapply(1:n, function(row) { tcrossprod(grad_U(x,row)) })) + diag(1/prior.theta_sd^2, L*(k+n.off))
 	B <- chol2inv(chol(A))
 
+	#return( (diag( B )) )
 	return( sqrt(diag( B )) )
 
 	theta.d <- matrix(x[1:(L*k)], nrow=k, ncol=L)
@@ -390,9 +391,13 @@ source("R/spline_cov.R")
 
 "sim_fit" <- function(fitL, step_e, step_L) {
 	# construct weights
-	basis   <- create.bspline.basis(c(min(t),max(t)),norder=4,nbasis=fitL)
-	knots   <- knots(basis)
-	weights <- getbasismatrix(t, basis, nderiv=0)
+	if (fitL == 1) {
+		weights <- matrix(1, nrow=n, ncol=1)
+	} else {
+		basis   <- create.bspline.basis(c(min(t),max(t)),norder=4,nbasis=fitL)
+		knots   <- knots(basis)
+		weights <- getbasismatrix(t, basis, nderiv=0)
+	}
 
 	# capture which are non-zero
 	nz <- apply(weights, 1, function(x){ which(x!=0) })
@@ -408,37 +413,39 @@ source("R/spline_cov.R")
 	Wnz <- matrix(0, nrow=length(nz), ncol=max(Nnz))
 	sapply(1:length(nz), function(i){ Wnz[i,1:Nnz[i]] <<- weights[i,nz[[i]]] })
 
-	Niter <- 100
+	Niter <- 5
 
 	samples <- matrix(0, nrow=Niter, ncol=fitL*(k+n.off))
 
-	inits <- rep(0, fitL*(k+n.off))
+	inits <- v1; #rep(0, fitL*(k+n.off))
 	t1 <- proc.time()
-	fit <- spline_cov(prior=1,
-		n=n, k=k, y=y, L=fitL, Nnz=Nnz, Mnz=Mnz-1, Wnz=Wnz,
-	  step_e=step_e, step_L=step_L, inits=inits, Niter=Niter, samples=samples)
+	fit <- spline_cov(data=list(prior=prior.theta_sd,
+		n=n, k=k, y=y, L=fitL, Nnz=Nnz, Mnz=Mnz-1, Wnz=Wnz),
+	  step_e=step_e, step_L=step_L, inits=inits, Niter=Niter, verbose=TRUE)
 	print(proc.time()-t1)
 
-	dic <- spline_cov_dic(fit, 100)
+	#dic <- spline_cov_dic(fit, 100)
 	res <- mcmc( matrix(fit$samples, nrow=Niter) )
 
-	list(fit=fit, res=res, dic=dic)
+	list(fit=fit, res=res) #, dic=dic)
 }
 
-fit1 <- sim_fit(5, 0.01, 25)
-fit2 <- sim_fit(10, 0.01, 25)
-fit3 <- sim_fit(15, 0.01, 25)
-fit4 <- sim_fit(20, 0.01, 25)
+set.seed(1983)
+fit <- sim_fit(L, 0.05, 10)
+#fit1 <- sim_fit(5, 0.1, 25)
+#fit2 <- sim_fit(10, 0.1, 25)
+#fit3 <- sim_fit(15, 0.1, 25)
+#fit4 <- sim_fit(20, 0.1, 25)
 
-} else {
+#} else {
 
 start <- v1
-step.e <- 0.5
-step.L <- 5 #round(1/step.e)
+step.e <- 0.05
+step.L <- 10 #round(1/step.e)
 print(c(step.e, step.L, step.L*step.e))
 
 set.seed(1983)
-nsamples <- 20
+nsamples <- 5
 samples <- matrix(0, nrow=nsamples, ncol=L*(k+n.off))
 current <- start
 acc <- 0
@@ -450,6 +457,7 @@ for (i in 1:nsamples) {
 	samples[i,] <- current
 	acc <- acc+res$acc
 }
+done
 mcmc.samples <- mcmc(samples) #samples[round(nsamples/2):nsamples,])
 cat("HMC acceptance rate:");print(acc/nsamples)
 print(summary(mcmc.samples))

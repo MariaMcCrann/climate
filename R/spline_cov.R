@@ -2,20 +2,22 @@
 
 "spline_cov" <- function(
 	data,
-	step_e, step_L, inits, Niter,
+	step_e, step_L, thin, inits, Niter,
 	verbose=FALSE
 ) {
 	dyn.load("RsplineCov.so")
+
+	Nsamples <- round(Niter/thin)
 
 	fit <- .C("spline_cov_fit",
 		prior=as.double(data$prior),
 		n=as.integer(data$n), k=as.integer(data$k), y=as.double(data$y),
 		L=as.integer(data$L), Nnz=as.integer(data$Nnz), Mnz=as.integer(data$Mnz), Wnz=as.double(data$Wnz),
-		step_e=as.double(step_e), step_L=as.integer(step_L),
+		step_e=as.double(step_e), step_L=as.integer(step_L), thin=as.integer(thin),
 		inits=as.double(inits),
 		Niter=as.integer(Niter),
-		samples=as.double(matrix(0, nrow=Niter, ncol=data$L*(data$k + data$k*(data$k-1)/2))),
-		deviance=as.double(matrix(0, nrow=Niter, ncol=1)),
+		samples=as.double(matrix(0, nrow=Nsamples, ncol=data$L*(data$k + data$k*(data$k-1)/2))),
+		deviance=as.double(matrix(0, nrow=Nsamples, ncol=1)),
 		verbose=as.logical(verbose),
 	NAOK=TRUE)
 
@@ -79,4 +81,22 @@
 	dyn.unload("RsplineCov.so")
 
 	res$gr
+}
+
+"spline_cov_scales" <- function(data, eval) {
+	dyn.load("RsplineCov.so")
+
+	scales <- rep(0, length(eval))
+
+	res <- .C("spline_cov_scales",
+		prior=as.double(data$prior),
+		n=as.integer(data$n), k=as.integer(data$k), y=as.double(data$y),
+		L=as.integer(data$L), Nnz=as.integer(data$Nnz), Mnz=as.integer(data$Mnz), Wnz=as.double(data$Wnz),
+		eval=as.double(eval),
+		scales=as.double(scales),
+	NAOK=TRUE)
+
+	dyn.unload("RsplineCov.so")
+
+	res$scales
 }

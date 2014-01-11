@@ -7,14 +7,20 @@ require(MASS)
 	q <- current_q
 	p <- rnorm(length(q), 0, 1)  # independent std normal variates
 	if (!missing(M)) {
+		# for q ~ N(0, Sigma = inv(M)), we want p ~ N(0, inv(Sigma) = M)
 		cholM <- M(q)
+		theM <- cholM %*% t(cholM)
 		invM <- chol2inv(cholM)
-		p <- t(cholM) %*% p
+		#p <- t(cholM) %*% p
+		p <- t(chol(invM)) %*% p
+#print(p); done
 #print(round(invM[1:10,1:10],2))
 	}
+
 	current_p <- p
 
 	if (!missing(s)) { # different step sizes
+		#m <- s(q)
 		epsilon <- epsilon*s(q)
 #print(epsilon);#done
 	}
@@ -26,7 +32,7 @@ require(MASS)
 	for (i in 1:L) {
 		# make a full step for the position
 		if (!missing(M)) {
-			q <- q + epsilon * invM %*% p
+			q <- q + 0.5*epsilon * invM %*% p
 		} else {
 			q <- q + epsilon * p
 		}
@@ -50,6 +56,8 @@ require(MASS)
 	if (!missing(M)) {
 		proposed_K <- t(p) %*% invM %*% p/2
 		current_K <- t(current_p) %*% invM %*% current_p/2
+		#proposed_K <- t(p) %*% t(chol(invM)) %*% p/2
+		#current_K <- t(current_p) %*% t(chol(invM)) %*% current_p/2
 	} else {
 		proposed_K <- sum(p^2)/2
 		current_K <- sum(current_p^2)/2
@@ -67,7 +75,7 @@ print(round(epsilon[1:10],3));
 print(round(current_q[1:10],3)); print(round(q[1:10],3));
 #print(round(p^2,3));
 #print(c(pr=round(pr,3),vs=round(vs,3)))
-print(c(pr,vs,pr<vs));
+print(round(c(pr,vs,pr<vs),2));
 #done
 }
 

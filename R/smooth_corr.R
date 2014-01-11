@@ -15,7 +15,7 @@ if (!("cdata" %in% ls())) {
 }
 
 # smooth covariance
-"smooth_cov" <- function(L, z, f, inc=0.025) {
+"smooth_cov" <- function(L, z, f, inc=0.02) {
 	knots <- seq(min(f), max(f), len=(max(f)-min(f))/inc)
 	Nknots <- length(knots)
 
@@ -26,6 +26,10 @@ if (!("cdata" %in% ls())) {
 
 	for (i in 1:Nknots) {
 		Sigma <- cov(z[f >= (knots[i]-inc)&f <= (knots[i]+inc),])
+
+		Sigma.svd  <- svd(Sigma)
+		Sigma <- Sigma.svd$u %*% diag(Sigma.svd$d) %*% t(Sigma.svd$u)
+
 		cholSigma <- chol(Sigma)
 		resp.d[i,] <- log( diag(cholSigma) )
 		resp.o[i,] <- as.vector(cholSigma[upper.tri(cholSigma)])

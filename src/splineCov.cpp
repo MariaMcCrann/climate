@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "model.h"
-#include "hmc.h"
+#include "mh.h"
 #include "utils.h"
 
 #include <R.h>
@@ -35,11 +35,13 @@ public:
 	virtual bool log_kernel(const double *theta, double *lp, double *llik=NULL, double *lpri=NULL, bool do_lik=true, bool do_pri=true);
 	virtual bool grad_lk(const double *theta, double *grad, const int row=-1);
 	virtual bool scales(const double *theta, double *s);
+	virtual bool get_obs_info(const double *theta, double *info);
 
 	void fillR_i(int irow, const double *diag, const double *offd);
-	bool obs_info(const double *theta);
 
 private:
+	virtual bool obs_info(const double *theta, double *gr);
+
 	const Prior *mPrior;
 	const Data  *mData;
 	int          mKTri;     // number of upper triangular elements
@@ -108,12 +110,42 @@ void ModelSplineCov::fillR_i(int irow, const double *diag, const double *offd) {
 
 }
 
-bool ModelSplineCov::obs_info(const double *theta) {
+bool ModelSplineCov::get_obs_info(const double *theta, double *info) {
+	int i,j;
+	double grad[mNParams*mNParams];
+
+	// get fisher info
+	obs_info(theta, grad);
+
+	// add prior piece for diagonals
+	for (i = 0; i < mNParams; i++) {
+		mObsInfo[i + i*mNParams] += 1/mPrior->var;
+	}
+
+	// invert info
+	if (chol2inv(mNParams, mObsInfo) != 0) return(false);
+
+	// factorize covariance
+	if (chol(mNParams, mObsInfo) != 0) return(false);
+
+	for (i = 0; i < mNParams; i++) {
+		for (j = i; j < mNParams; j++) {
+			info[i + j*mNParams] = mObsInfo[i + j*mNParams];
+		}
+	}
+
+	return(true);
+}
+
+bool ModelSplineCov::obs_info(const double *theta, double *gr) {
 	int irow;
 	int i,j;
 
 	// initialize observed info
 	for (i = 0; i < mNParams*mNParams; i++) mObsInfo[i] = 0;
+
+	// initialize gradient
+	for (i = 0; i < mNParams; i++) gr[i] = 0;
 
 	double grad[mNParams];
 	for (irow = 0; irow < mData->n; irow++) {
@@ -121,6 +153,8 @@ bool ModelSplineCov::obs_info(const double *theta) {
 
 		// add to info
 		for (i = 0; i < mNParams; i++) {
+			gr[i] += grad[i];
+
 			for (j = i; j < mNParams; j++) {
 				mObsInfo[i + j*mNParams] += grad[i]*grad[j];
 			}
@@ -358,9 +392,10 @@ for (int a = 0; a < mData->k; a++) { for (int b = 0; b < mData->k; b++) { MSG("%
 
 bool ModelSplineCov::scales(const double *theta, double *s) {
 	int i;
+	double grad[mNParams];
 
 	// use observed info for scales
-	obs_info(theta);
+	obs_info(theta, grad);
 
 	// add prior piece for diagonals
 	for (i = 0; i < mNParams; i++) {
@@ -374,6 +409,17 @@ bool ModelSplineCov::scales(const double *theta, double *s) {
 	for (i = 0; i < mNParams; i++) {
 		s[i] = sqrt(mObsInfo[i + i*mNParams]);
 	}
+
+/*
+	// adjust scales for steep gradient
+	for (i = 0; i < mNParams; i++) {
+		if (s[i] > 1) { s[i] = 1; }
+
+		if (s[i]*abs(grad[i]) > 0.5) {
+			s[i] = 0.5/abs(grad[i]);
+		}
+	}
+*/
 
 	return(true);
 }
@@ -389,7 +435,7 @@ void spline_cov_fit(
 	int *L,
 	int *Nnz, int *Mnz, double *Wnz,
 	// sampler 
-	double *step_e, int *step_L,
+	double *step_e, int *step_L, int *thin,
 	double *inits,
 	int *Niter, double *samples, double *deviance,
 	bool *verbose
@@ -424,13 +470,18 @@ void spline_cov_fit(
 
 	double scales[m->num_params()];
 	m->scales((const double*)inits, scales);
-	//for (int i = 0; i < m->num_params(); i++) MSG("%.2f ", scales[i]); MSG("\n");
-	for (int i = 0; i < 5; i++) MSG("%.2f ", scales[i]); MSG("\n");
+	for (int i = 0; i < m->num_params(); i++) MSG("%.2f ", scales[i]); MSG("\n");
+	//for (int i = 0; i < 5; i++) MSG("%.2f ", scales[i]); MSG("\n");
 */
 
+/*
 	// get samples
 	HMC *sampler = new HMC(m, (const double *)inits, samples, deviance);
 	sampler->sample(*Niter, *step_e, *step_L, *verbose);
+*/
+
+	MH *sampler = new MH(m, (const double *)inits, samples, deviance);
+	sampler->sample(*Niter, *thin, *step_e, *verbose);
 
 	delete sampler;
 	delete m;
@@ -510,6 +561,45 @@ void spline_cov_gr(
 	Model *m = new ModelSplineCov((const ModelSplineCov::Prior *)model_prior, (const ModelSplineCov::Data *)model_data);
 
 	m->grad_lk((const double*)eval, gr);
+
+	delete m;
+	delete model_prior;
+	delete model_data;
+}
+
+void spline_cov_scales(
+	// prior
+	double *prior,
+	// data
+	int *n, int *k,
+	double *y,
+	int *L,
+	int *Nnz, int *Mnz, double *Wnz,
+	// evaluation point
+	double *eval,
+	// result
+	double *scales
+) {
+
+	// prior
+	ModelSplineCov::Prior *model_prior = new ModelSplineCov::Prior();
+	model_prior->sd  = prior[0];
+	model_prior->var = pow(prior[0], 2);
+
+	// data
+	ModelSplineCov::Data *model_data = new ModelSplineCov::Data();
+	model_data->n   = n[0];
+	model_data->k   = k[0];
+	model_data->y   = (const double *)y;
+	model_data->L   = L[0];
+	model_data->Nnz = (const int *)Nnz;
+	model_data->Mnz = (const int *)Mnz;
+	model_data->Wnz = (const double *)Wnz;
+
+	// model
+	Model *m = new ModelSplineCov((const ModelSplineCov::Prior *)model_prior, (const ModelSplineCov::Data *)model_data);
+
+	m->scales((const double*)eval, scales);
 
 	delete m;
 	delete model_prior;

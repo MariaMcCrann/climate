@@ -53,7 +53,7 @@ k  <- ncol(zstar)
 	Wnz <- matrix(0, nrow=length(nz), ncol=max(Nnz))
 	sapply(1:length(nz), function(i){ Wnz[i,1:Nnz[i]] <<- weights[i,nz[[i]]] })
 
-	data <- list(prior=1,
+	data <- list(prior=100,
 		n=n, k=k, y=zstar,
 		L=L, weights=weights,
 		Nnz=Nnz, Mnz=Mnz-1, Wnz=Wnz,
@@ -89,7 +89,7 @@ k  <- ncol(zstar)
 	bfgs$par
 }
 
-"do_fit" <- function(data, Niter=100, Nburn=50, step_e=0.01, step_L=1, starts) {
+"do_fit" <- function(data, Niter=100, Nburn=50, step_e=0.01, step_L=1, thin=1, starts) {
 	# do we have starting values?
 	if (missing(starts))
 		has_starts <- FALSE
@@ -106,11 +106,13 @@ k  <- ncol(zstar)
 		init <- starts
 	}
 
+	Nsamples <- round(Niter/thin)
+
 	t1 <- proc.time()
 	fits <- mclapply(1:Nchains, mc.cores=Ncores,
 		function(i) {
-		set.seed(311*i);
-		fit <- spline_cov(data=data, step_e=step_e, step_L=step_L, inits=init, Niter=Niter, verbose=TRUE)
+		set.seed(311 + i*Niter);
+		fit <- spline_cov(data=data, step_e=step_e, step_L=step_L, thin=thin, inits=init, Niter=Niter, verbose=TRUE)
 	})
 	cat("Time to samples:\n")
 	print(proc.time()-t1)
@@ -118,13 +120,16 @@ k  <- ncol(zstar)
 	# compute DIC
 
 	# get samples, discarding burn
+	samples <- vector("list", Nchains)
 	sub <- -(1:Nburn)
 	res <- vector("list", Nchains)
 	dev <- vector("list", Nchains)
 	for (i in 1:Nchains) {
-		res[[i]] <- matrix(fits[[i]]$samples, nrow=Niter)[sub,]
-		dev[[i]] <- matrix(fits[[i]]$deviance, nrow=Niter)[sub,]
+		res[[i]] <- matrix(fits[[i]]$samples, nrow=Nsamples)[sub,]
+		dev[[i]] <- matrix(fits[[i]]$deviance, nrow=Nsamples)[sub,]
+		samples[[i]] <- mcmc( matrix(fits[[i]]$samples, nrow=Nsamples) )
 	}
+	samples <- mcmc.list(samples)
 
 	# posterior mean
 	pmean <- colMeans( do.call(rbind, res) )
@@ -137,21 +142,23 @@ k  <- ncol(zstar)
 
 	# save fit
 	fname <- paste0("scL",data$L,"_",WHICH_CDAT,".RData")
-	save(data, fits, res, init, DIC, pD, file=paste0("fitsums/fitsum_",fname))
+	save(data, samples, init, DIC, pD, Nburn, thin, Niter, Nsamples, file=paste0("fitsums/fitsum_",fname))
 
-	list(L=data$L, fits=fits, res=res, init=init, DIC=DIC, pD=pD)
+	list(L=data$L, samples=samples, init=init, DIC=DIC, pD=pD, Nburn=Nburn, thin=thin, Niter=Niter, Nsamples=Nsamples)
 }
 
 # normal fit
 if (exists("WHICH_CDAT") && exists("THE_L")) {
-	Niter <- 1000
-	Nburn <- 100
+	Niter <- 3000
+	thin <- 100
+	Nsamples <- round(Niter/thin)
+	Nburn <- round(Nsamples/2)
 
 	if (WHICH_CDAT == "ST") {
-		if (THE_L == 5) { step_e <- 0.05; step_L <- 5; }
-		else if (THE_L == 10) { step_e <- 0.01; step_L <- 10; }
-		else if (THE_L == 15) { step_e <- 0.01; step_L <- 25; }
-		else if (THE_L == 20) { step_e <- 0.005; step_L <- 50; }
+		if (THE_L == 5) { step_e <- 0.20; step_L <- 25; }
+		else if (THE_L == 10) { step_e <- 0.04; step_L <- 5; }
+		else if (THE_L == 15) { step_e <- 0.005; step_L <- 5; }
+		else if (THE_L == 20) { step_e <- 0.00075; step_L <- 10; }
 		#else if (THE_L == 15) { step_e <- 0.00001; step_L <- 15; }
 		#else if (THE_L == 20) { step_e <- 0.000001; step_L <- 20; }
 	}
@@ -159,7 +166,8 @@ if (exists("WHICH_CDAT") && exists("THE_L")) {
 	#load( paste0("inits/",WHICH_CDAT,"_L",THE_L,".RData") )
 	data <- get_data(THE_L)
 	inits <- smooth_cov(L=THE_L, z=zstar, f=f)
-	fit <- do_fit(data=data, Niter=Niter, Nburn=Nburn, step_e=step_e, step_L=step_L, starts=inits)
+	fit <- do_fit(data=data, Niter=Niter, Nburn=Nburn, step_e=step_e, step_L=step_L, thin=thin, starts=inits)
+	#print(spline_cov_lk(data, inits))
 }
 
 if (FALSE) {
