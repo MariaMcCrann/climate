@@ -151,17 +151,20 @@ k  <- ncol(zstar)
 if (exists("WHICH_CDAT") && exists("THE_L")) {
 	Niter <- 3000
 	thin <- 100
-	Nsamples <- round(Niter/thin)
-	Nburn <- round(Nsamples/2)
 
 	if (WHICH_CDAT == "ST") {
-		if (THE_L == 5) { step_e <- 0.20; step_L <- 25; }
-		else if (THE_L == 10) { step_e <- 0.04; step_L <- 5; }
-		else if (THE_L == 15) { step_e <- 0.005; step_L <- 5; }
-		else if (THE_L == 20) { step_e <- 0.00075; step_L <- 10; }
+		if (THE_L == 5) { Niter <- 100000; thin <- 10; step_e <- 0.20; step_L <- 25; }
+		else if (THE_L == 10) { Niter <- 250000; thin <- 25; step_e <- 0.04; step_L <- 5; }
+		else if (THE_L == 15) { Niter <- 500000; thin <- 50; step_e <- 0.005; step_L <- 5; }
+		else if (THE_L == 20) { Niter <- 1000000; thin <- 100; step_e <- 0.00075; step_L <- 10; }
 		#else if (THE_L == 15) { step_e <- 0.00001; step_L <- 15; }
 		#else if (THE_L == 20) { step_e <- 0.000001; step_L <- 20; }
 	}
+
+	Nsamples <- round(Niter/thin)
+	Nburn <- round(Nsamples/2)
+
+	print(c(Niter,thin,Nsamples,Nburn))
 
 	#load( paste0("inits/",WHICH_CDAT,"_L",THE_L,".RData") )
 	data <- get_data(THE_L)
