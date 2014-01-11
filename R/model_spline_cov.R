@@ -149,17 +149,17 @@ k  <- ncol(zstar)
 
 # normal fit
 if (exists("WHICH_CDAT") && exists("THE_L")) {
-	Niter <- 3000
-	thin <- 100
-
 	if (WHICH_CDAT == "ST") {
-		if (THE_L == 5) { Niter <- 100000; thin <- 10; step_e <- 0.20; step_L <- 25; }
+		if (THE_L == 5) { Niter <- 100000; thin <- 10; step_e <- 0.10; step_L <- 25; }
 		else if (THE_L == 10) { Niter <- 250000; thin <- 25; step_e <- 0.04; step_L <- 5; }
 		else if (THE_L == 15) { Niter <- 500000; thin <- 50; step_e <- 0.005; step_L <- 5; }
-		else if (THE_L == 20) { Niter <- 1000000; thin <- 100; step_e <- 0.00075; step_L <- 10; }
+		else if (THE_L == 20) { Niter <- 1000000; thin <- 100; step_e <- 0.00050; step_L <- 10; }
 		#else if (THE_L == 15) { step_e <- 0.00001; step_L <- 15; }
 		#else if (THE_L == 20) { step_e <- 0.000001; step_L <- 20; }
 	}
+
+	#Niter <- 10000
+	#thin <- 10
 
 	Nsamples <- round(Niter/thin)
 	Nburn <- round(Nsamples/2)
