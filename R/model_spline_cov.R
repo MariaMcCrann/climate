@@ -157,7 +157,7 @@ if (exists("WHICH_CDAT") && exists("THE_L")) {
 		else if (THE_L == 10) { Niter <- 2*400000;  thin <- Niter/10000; step_e <- 0.04; step_L <- 5; }
 		else if (THE_L == 15) { Niter <- 2*900000;  thin <- Niter/10000; step_e <- 0.005; step_L <- 5; }
 		else if (THE_L == 20) { Niter <- 2*1600000; thin <- Niter/10000; step_e <- 0.001; step_L <- 10; }
-	else if (WHICH_CDAT == "SP" || WHICH_CDAT == "WP") {
+	} else if (WHICH_CDAT == "SP" || WHICH_CDAT == "WP") {
 		if (THE_L == 5) {       Niter <- 2*100000;  thin <- Niter/10000; step_e <- 0.10; step_L <- 25; }
 		else if (THE_L == 10) { Niter <- 2*400000;  thin <- Niter/10000; step_e <- 0.04; step_L <- 5; }
 		else if (THE_L == 15) { Niter <- 2*900000;  thin <- Niter/10000; step_e <- 0.010; step_L <- 5; }
