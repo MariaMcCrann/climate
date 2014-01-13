@@ -153,15 +153,15 @@ if (exists("WHICH_CDAT") && exists("THE_L")) {
 #100000/50625
 #1.975309*(c(5,10,15,20)*(9+9*4))^2
 	if (WHICH_CDAT == "ST" || WHICH_CDAT == "WT") {
-		if (THE_L == 5) {       Niter <- 1*100000;  thin <- Niter/10000; step_e <- 0.10; step_L <- 25; }
-		else if (THE_L == 10) { Niter <- 1*400000;  thin <- Niter/10000; step_e <- 0.04; step_L <- 5; }
-		else if (THE_L == 15) { Niter <- 1*900000;  thin <- Niter/10000; step_e <- 0.005; step_L <- 5; }
-		else if (THE_L == 20) { Niter <- 1*1600000; thin <- Niter/10000; step_e <- 0.001; step_L <- 10; }
+		if (THE_L == 5) {       Niter <- 1*5062500;  thin <- Niter/10000; step_e <- 0.10; step_L <- 25; }
+		else if (THE_L == 10) { Niter <- 1*20250000;  thin <- Niter/10000; step_e <- 0.04; step_L <- 5; }
+		else if (THE_L == 15) { Niter <- 1*45562500;  thin <- Niter/10000; step_e <- 0.005; step_L <- 5; }
+		else if (THE_L == 20) { Niter <- 1*81000000; thin <- Niter/10000; step_e <- 0.001; step_L <- 10; }
 	} else if (WHICH_CDAT == "SP" || WHICH_CDAT == "WP") {
-		if (THE_L == 5) {       Niter <- 1*100000;  thin <- Niter/10000; step_e <- 0.10; step_L <- 25; }
-		else if (THE_L == 10) { Niter <- 1*400000;  thin <- Niter/10000; step_e <- 0.04; step_L <- 5; }
-		else if (THE_L == 15) { Niter <- 1*900000;  thin <- Niter/10000; step_e <- 0.005; step_L <- 5; }
-		else if (THE_L == 20) { Niter <- 1*1600000; thin <- Niter/10000; step_e <- 0.001; step_L <- 10; }
+		if (THE_L == 5) {       Niter <- 1*5062500;  thin <- Niter/10000; step_e <- 0.10; step_L <- 25; }
+		else if (THE_L == 10) { Niter <- 1*20250000;  thin <- Niter/10000; step_e <- 0.04; step_L <- 5; }
+		else if (THE_L == 15) { Niter <- 1*45562500;  thin <- Niter/10000; step_e <- 0.005; step_L <- 5; }
+		else if (THE_L == 20) { Niter <- 1*81000000; thin <- Niter/10000; step_e <- 0.001; step_L <- 10; }
 	}
 
 	Niter <- 10000
