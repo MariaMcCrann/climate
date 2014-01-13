@@ -1,5 +1,5 @@
-PKG_CPPFLAGS=-Wall -I/home/rjparker/libmcmc/src
-PKG_LIBS=-L/home/rjparker/libmcmc/lib -L/home/rjparker/soft/lib64/R/lib/ -lRmcmc -lm -lc -lm -pthread -lRlapack #-lRmath -lRblas -lRlapack
-#PKG_CPPFLAGS=-Wall -I/home/rjp/Dropbox/git/libmcmc/src
-#PKG_LIBS=-L/home/rjp/Dropbox/git/libmcmc/lib -L/home/rjparker/soft/lib64/R/lib/ -lRmcmc -lm -lc -lm -pthread -lRlapack #-lRmath -lRblas -lRlapack
+#PKG_CPPFLAGS=-Wall -I/home/rjparker/libmcmc/src
+#PKG_LIBS=-L/home/rjparker/libmcmc/lib -L/home/rjparker/soft/lib64/R/lib/ -lRmcmc -lm -lc -lm -pthread -lRlapack #-lRmath -lRblas -lRlapack
+PKG_CPPFLAGS=-Wall -I/home/rjp/Dropbox/git/libmcmc/src
+PKG_LIBS=-L/home/rjp/Dropbox/git/libmcmc/lib -L/home/rjparker/soft/lib64/R/lib/ -lRmcmc -lm -lc -lm -pthread -lRlapack #-lRmath -lRblas -lRlapack
 
