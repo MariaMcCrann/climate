@@ -164,8 +164,8 @@ if (exists("WHICH_CDAT") && exists("THE_L")) {
 		else if (THE_L == 20) { Niter <- 1*1600000; thin <- Niter/10000; step_e <- 0.001; step_L <- 10; }
 	}
 
-	#Niter <- 10000
-	#thin <- 10
+	Niter <- 10000
+	thin <- 10
 
 	Nsamples <- round(Niter/thin)
 	Nburn <- round(Nsamples/2)
@@ -175,6 +175,9 @@ if (exists("WHICH_CDAT") && exists("THE_L")) {
 	#load( paste0("inits/",WHICH_CDAT,"_L",THE_L,".RData") )
 	data <- get_data(THE_L)
 	inits <- smooth_cov(L=THE_L, z=zstar, f=f)
+
+	step_e <- (2.38^2)/(THE_L*(data$k+data$k*(data$k-1)/2))
+
 	fit <- do_fit(data=data, Niter=Niter, Nburn=Nburn, step_e=step_e, step_L=step_L, thin=thin, starts=inits)
 	#print(spline_cov_lk(data, inits))
 }
