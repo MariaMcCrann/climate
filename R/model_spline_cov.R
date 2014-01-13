@@ -153,16 +153,18 @@ if (exists("WHICH_CDAT") && exists("THE_L")) {
 #100000/50625
 #1.975309*(c(5,10,15,20)*(9+9*4))^2
 	if (WHICH_CDAT == "ST" || WHICH_CDAT == "WT") {
-		if (THE_L == 5) {       Niter <- 1*5062500;  thin <- Niter/10000; step_e <- 0.10; step_L <- 25; }
-		else if (THE_L == 10) { Niter <- 1*20250000;  thin <- Niter/10000; step_e <- 0.04; step_L <- 5; }
-		else if (THE_L == 15) { Niter <- 1*45562500;  thin <- Niter/10000; step_e <- 0.005; step_L <- 5; }
-		else if (THE_L == 20) { Niter <- 1*81000000; thin <- Niter/10000; step_e <- 0.001; step_L <- 10; }
+		if (THE_L == 5) {       Niter <- 1*5062500/100;  thin <- Niter/10000; step_e <- 0.10; step_L <- 25; }
+		else if (THE_L == 10) { Niter <- 1*20250000/100;  thin <- Niter/10000; step_e <- 0.04; step_L <- 5; }
+		else if (THE_L == 15) { Niter <- 1*45562500/100;  thin <- Niter/10000; step_e <- 0.005; step_L <- 5; }
+		else if (THE_L == 20) { Niter <- 1*81000000/100; thin <- Niter/10000; step_e <- 0.001; step_L <- 10; }
 	} else if (WHICH_CDAT == "SP" || WHICH_CDAT == "WP") {
-		if (THE_L == 5) {       Niter <- 1*5062500;  thin <- Niter/10000; step_e <- 0.10; step_L <- 25; }
-		else if (THE_L == 10) { Niter <- 1*20250000;  thin <- Niter/10000; step_e <- 0.04; step_L <- 5; }
-		else if (THE_L == 15) { Niter <- 1*45562500;  thin <- Niter/10000; step_e <- 0.005; step_L <- 5; }
-		else if (THE_L == 20) { Niter <- 1*81000000; thin <- Niter/10000; step_e <- 0.001; step_L <- 10; }
+		if (THE_L == 5) {       Niter <- 1*5062500/100;  thin <- Niter/10000; step_e <- 0.10; step_L <- 25; }
+		else if (THE_L == 10) { Niter <- 1*20250000/100;  thin <- Niter/10000; step_e <- 0.04; step_L <- 5; }
+		else if (THE_L == 15) { Niter <- 1*45562500/100;  thin <- Niter/10000; step_e <- 0.005; step_L <- 5; }
+		else if (THE_L == 20) { Niter <- 1*81000000/100; thin <- Niter/10000; step_e <- 0.001; step_L <- 10; }
 	}
+
+	thin <- round(thin)
 
 	#Niter <- 10000
 	#thin <- 10
@@ -172,9 +174,9 @@ if (exists("WHICH_CDAT") && exists("THE_L")) {
 
 	print(c(Niter,thin,Nsamples,Nburn))
 
-	#load( paste0("inits/",WHICH_CDAT,"_L",THE_L,".RData") )
+	load( paste0("inits/",WHICH_CDAT,"_L",THE_L,".RData") )
 	data <- get_data(THE_L)
-	inits <- smooth_cov(L=THE_L, z=zstar, f=f)
+	#inits <- smooth_cov(L=THE_L, z=zstar, f=f)
 
 	step_e <- (2.38^2)/(THE_L*(data$k+data$k*(data$k-1)/2))
 
