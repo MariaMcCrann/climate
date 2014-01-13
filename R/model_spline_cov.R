@@ -164,8 +164,8 @@ if (exists("WHICH_CDAT") && exists("THE_L")) {
 		else if (THE_L == 20) { Niter <- 1*81000000; thin <- Niter/10000; step_e <- 0.001; step_L <- 10; }
 	}
 
-	Niter <- 10000
-	thin <- 10
+	#Niter <- 10000
+	#thin <- 10
 
 	Nsamples <- round(Niter/thin)
 	Nburn <- round(Nsamples/2)
