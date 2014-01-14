@@ -32,7 +32,7 @@ public:
 	~ModelSplineCov();
 
   virtual int  num_params() const;
-	virtual bool log_kernel(const double *theta, double *lp, double *llik=NULL, double *lpri=NULL, bool do_lik=true, bool do_pri=true);
+	virtual bool log_kernel(const double *theta, double *lp, double *llik=NULL, double *lpri=NULL, bool do_lik=true, bool do_pri=true, int param=-1);
 	virtual bool grad_lk(const double *theta, double *grad, const int row=-1);
 	virtual bool scales(const double *theta, double *s);
 	virtual bool get_obs_info(const double *theta, double *info);
@@ -164,12 +164,14 @@ bool ModelSplineCov::obs_info(const double *theta, double *gr) {
 	return(true);
 }
 
-bool ModelSplineCov::log_kernel(const double *theta, double *lk, double *llik, double *lpri, bool do_lik, bool do_pri) {
+bool ModelSplineCov::log_kernel(const double *theta, double *lk, double *llik, double *lpri, bool do_lik, bool do_pri, int param) {
 	double lik = 0;
 	double pri = 0;
 
 	int irow;
 	int i,j;
+	bool do_comp;
+	int param_col;
 
 	const double *diag = theta;
 	const double *offd = theta + mData->k*mData->L;
@@ -181,6 +183,18 @@ bool ModelSplineCov::log_kernel(const double *theta, double *lk, double *llik, d
 	int    ione   = 1;
 	double done   = 1;
 	double bs[mData->k];
+
+	if (param >= 0) {
+		// which weight column does this belong to?
+		if (param < mData->k*mData->L) { // diagonal
+			param_col = floor((double)param/mData->k);
+		} else { // upper triangular
+			param_col = floor((double)(param-mData->k*mData->L)/mKTri);
+		}
+//MSG("param = %d, param_col = %d\n", param, param_col);
+	} else {
+		param_col = 0; // unused
+	}
 
 //for (i = 0; i < mData->k*mData->L; i++) MSG("%.2f; ", diag[i]); MSG("\n");
 //for (i = 0; i < mKTri*mData->L; i++) MSG("%.2f; ", offd[i]); MSG("\n");
@@ -196,6 +210,22 @@ bool ModelSplineCov::log_kernel(const double *theta, double *lk, double *llik, d
 		}
 
 		for (irow = 0; irow < mData->n; irow++) {
+			do_comp = true;
+
+			if (param >= 0) {
+				// we only care about a single parameter
+				do_comp = false;
+				for (i = 0; i < mData->Nnz[irow]; i++) {
+					if (param_col == mData->Mnz[irow + i*mData->n]) {
+						// this weight is non-zero, so add it in
+						do_comp = true;
+						break;
+					}
+				}
+			}
+
+			if (!do_comp) continue; // skip this row
+
 			// fill in R_i
 			fillR_i(irow, diag, offd);
 
@@ -231,10 +261,16 @@ for (k1 = 0; k1 < mData->k; k1++) {
 
 
 	if (do_pri) { // prior
-		for (i = 0; i < mNParams; i++) {
-			pri += pow(theta[i],2);
+		if (param >= 0) {
+			// only add for this parameter
+			pri += pow(theta[param], 2);
+		} else {
+			// add for all parameters
+			for (i = 0; i < mNParams; i++) {
+				pri += pow(theta[i],2);
+			}
 		}
-		pri *= -0.5/pow(mPrior->sd, 2);
+		pri *= -0.5/mPrior->var;
 	}
 
 	// add likelihood and prior components
@@ -481,7 +517,7 @@ void spline_cov_fit(
 */
 
 	MH *sampler = new MH(m, (const double *)inits, samples, deviance);
-	sampler->sample(*Niter, *thin, *step_e, *verbose);
+	sampler->sample(*Niter, *thin, *step_e, true, *verbose);
 
 	delete sampler;
 	delete m;

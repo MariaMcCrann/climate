@@ -166,8 +166,8 @@ if (exists("WHICH_CDAT") && exists("THE_L")) {
 
 	thin <- round(thin)
 
-	#Niter <- 10000
-	#thin <- 10
+	Niter <- 10000
+	thin <- 1
 
 	Nsamples <- round(Niter/thin)
 	Nburn <- round(Nsamples/2)
@@ -178,7 +178,8 @@ if (exists("WHICH_CDAT") && exists("THE_L")) {
 	data <- get_data(THE_L)
 	#inits <- smooth_cov(L=THE_L, z=zstar, f=f)
 
-	step_e <- (2.38^2)/(THE_L*(data$k+data$k*(data$k-1)/2))/25
+	#step_e <- (2.38^2)/(THE_L*(data$k+data$k*(data$k-1)/2))/25
+	step_e <- (2.38^2)/(THE_L*(data$k+data$k*(data$k-1)/2))
 
 	fit <- do_fit(data=data, Niter=Niter, Nburn=Nburn, step_e=step_e, step_L=step_L, thin=thin, starts=inits)
 	#print(spline_cov_lk(data, inits))

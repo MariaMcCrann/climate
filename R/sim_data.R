@@ -413,7 +413,7 @@ source("R/spline_cov.R")
 	Wnz <- matrix(0, nrow=length(nz), ncol=max(Nnz))
 	sapply(1:length(nz), function(i){ Wnz[i,1:Nnz[i]] <<- weights[i,nz[[i]]] })
 
-	Niter <- 5
+	Niter <- 100000
 
 	samples <- matrix(0, nrow=Niter, ncol=fitL*(k+n.off))
 
@@ -421,7 +421,7 @@ source("R/spline_cov.R")
 	t1 <- proc.time()
 	fit <- spline_cov(data=list(prior=prior.theta_sd,
 		n=n, k=k, y=y, L=fitL, Nnz=Nnz, Mnz=Mnz-1, Wnz=Wnz),
-	  step_e=step_e, step_L=step_L, inits=inits, Niter=Niter, verbose=TRUE)
+	  step_e=step_e, step_L=step_L, inits=inits, Niter=Niter, thin=1, verbose=TRUE)
 	print(proc.time()-t1)
 
 	#dic <- spline_cov_dic(fit, 100)
@@ -431,7 +431,8 @@ source("R/spline_cov.R")
 }
 
 set.seed(1983)
-fit <- sim_fit(L, 0.05, 10)
+fit <- sim_fit(L, 0.20, 10)
+done
 #fit1 <- sim_fit(5, 0.1, 25)
 #fit2 <- sim_fit(10, 0.1, 25)
 #fit3 <- sim_fit(15, 0.1, 25)
