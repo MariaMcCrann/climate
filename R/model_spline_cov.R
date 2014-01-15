@@ -54,7 +54,7 @@ k  <- ncol(zstar)
 	sapply(1:length(nz), function(i){ Wnz[i,1:Nnz[i]] <<- weights[i,nz[[i]]] })
 
 	data <- list(prior=100,
-		n=n, k=k, y=zstar,
+		n=n, k=k, y=zstar, f=f,
 		L=L, weights=weights,
 		Nnz=Nnz, Mnz=Mnz-1, Wnz=Wnz,
 		uf=uf, ufw=ufw, knots=knots
@@ -174,13 +174,21 @@ if (exists("WHICH_CDAT") && exists("THE_L")) {
 
 	print(c(Niter,thin,Nsamples,Nburn))
 
-	load( paste0("inits/",WHICH_CDAT,"_L",THE_L,".RData") )
+	cat("Getting data\n")
 	data <- get_data(THE_L)
-	#inits <- smooth_cov(L=THE_L, z=zstar, f=f)
 
+	cat("Getting inits\n")
+#	if (THE_L == 20) {
+		inits <- smooth_cov(L=THE_L, z=data$y, f=data$f)
+#	} else {
+#		load( paste0("inits/",WHICH_CDAT,"_L",THE_L,".RData") )
+#	}
+
+	cat("Starting step size\n")
 	#step_e <- (2.38^2)/(THE_L*(data$k+data$k*(data$k-1)/2))/25
 	step_e <- (2.38^2)/(THE_L*(data$k+data$k*(data$k-1)/2))
 
+	cat("Running fit\n")
 	fit <- do_fit(data=data, Niter=Niter, Nburn=Nburn, step_e=step_e, step_L=step_L, thin=thin, starts=inits)
 	#print(spline_cov_lk(data, inits))
 }
