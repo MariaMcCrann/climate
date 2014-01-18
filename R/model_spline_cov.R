@@ -20,6 +20,9 @@ if (FALSE) {
 # normalize the data
 zstar <- sqrt(d) * z
 
+# get range of f before we remove d_i=0
+range.f <- range(f)
+
 # remove d_i = 0
 rem <- which(d==0)
 if (length(rem) > 0) {
@@ -33,7 +36,8 @@ k  <- ncol(zstar)
 	if (L < 4) { stop("B-splines require L > 3\n") }
 
 	# create basis functions
-	Bbasis  <- create.bspline.basis(c(min(f),max(f)),norder=4,nbasis=L)
+	#Bbasis  <- create.bspline.basis(c(min(f),max(f)),norder=4,nbasis=L)
+	Bbasis  <- create.bspline.basis(range.f,norder=4,nbasis=L)
 	knots   <- knots(Bbasis)
 	weights <- getbasismatrix(f, Bbasis, nderiv=0)
 	uf      <- quantile(f, seq(0,1,length=100))
