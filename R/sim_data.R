@@ -2,15 +2,16 @@
 library(fda)
 
 source("R/hmc.R")
+source("R/spline_cov.R")
 
 set.seed(03172000)
-n <- 100
+n <- 7000
 t <- seq(0, 1, len=n)
-k <- 3
+k <- 9
 n.off <- k*(k-1)/2
 
 # number of basis functions
-L <- 5
+L <- 20
 
 if (L > 1) {
 	# construct weights
@@ -378,16 +379,44 @@ done
 }
 
 if (TRUE) {
+# construct weights
+if (L == 1) {
+	weights <- matrix(1, nrow=n, ncol=1)
+} else {
+	basis   <- create.bspline.basis(c(min(t),max(t)),norder=4,nbasis=L)
+	knots   <- knots(basis)
+	weights <- getbasismatrix(t, basis, nderiv=0)
+}
+
+# capture which are non-zero
+nz <- apply(weights, 1, function(x){ which(x!=0) })
+
+# get number of non-zeros
+Nnz <- sapply(1:length(nz), function(i){ length(nz[[i]]) })
+
+# get non-zero indices
+Mnz <- matrix(0, nrow=length(nz), ncol=max(Nnz))
+sapply(1:length(nz), function(i){ Mnz[i,1:Nnz[i]] <<- nz[[i]] })
+
+# get non-zero weights
+Wnz <- matrix(0, nrow=length(nz), ncol=max(Nnz))
+sapply(1:length(nz), function(i){ Wnz[i,1:Nnz[i]] <<- weights[i,nz[[i]]] })
+
 t1 <- proc.time()
-#for (i in 1:1) U(v1) #print(round(U(v1),2))
+for (i in 1:1) print(round(U(v3),2))
 #for (i in 1:1) print(round(grad_U(v1),2))
-for (i in 1:1) print(round(s(v1),2))
+#for (i in 1:1) print(round(s(v1),2))
 #for (i in 1:50) { U(v1); grad_U(v1); s(v1); }
 print(proc.time()-t1)
+
+t1 <- proc.time()
+print(spline_cov_lk(data=list(prior=prior.theta_sd,
+		n=n, k=k, y=y, L=L, Nnz=Nnz, Mnz=Mnz-1, Wnz=Wnz), eval=v3)$lk)
+print(proc.time()-t1)
+done
 }
 
 if (TRUE) {
-source("R/spline_cov.R")
 
 "sim_fit" <- function(fitL, step_e, step_L) {
 	# construct weights
@@ -432,7 +461,6 @@ source("R/spline_cov.R")
 
 set.seed(1983)
 fit <- sim_fit(L, 0.20, 10)
-done
 #fit1 <- sim_fit(5, 0.1, 25)
 #fit2 <- sim_fit(10, 0.1, 25)
 #fit3 <- sim_fit(15, 0.1, 25)
