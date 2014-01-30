@@ -78,7 +78,7 @@ n  <- nrow(z)
 k  <- ncol(z)
 Nt <- max(T)
 
-if (FALSE) {
+if (TRUE) {
 	# compile once...
 	weights <- get_weights(f, 1)$w; max_w <- rep(1, length(f)); i_max_w <- max_w; uf <- quantile(f, seq(0,1,length=10)); ufw <- get_weights(uf, 1)$w
 	dat <- list(
@@ -88,7 +88,7 @@ if (FALSE) {
 		Nuf=length(uf), ufw=ufw,
 		krho=round(k*(k-1)/2)
 	)
-	fit2d <- stan(file = 'stan/model_2d_uc.stan', data = dat, iter = 10, chains = 1, init="0") #,pars="Omega");
+	fit2d <- stan(file = 'stan/model_2d_uc_hier.stan', data = dat, iter = 10, chains = 1, init="0") #,pars="Omega");
 	save(fit2d, file="fit2d.RData");
 	done
 } else {

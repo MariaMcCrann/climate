@@ -5,13 +5,13 @@ source("R/hmc.R")
 source("R/spline_cov.R")
 
 set.seed(03172000)
-n <- 7000
+n <- 500
 t <- seq(0, 1, len=n)
-k <- 9
+k <- 3
 n.off <- k*(k-1)/2
 
 # number of basis functions
-L <- 20
+L <- 5
 
 if (L > 1) {
 	# construct weights
@@ -378,7 +378,7 @@ sapply(1:(L*(k+n.off)), function(w) {
 done
 }
 
-if (TRUE) {
+if (FALSE) {
 # construct weights
 if (L == 1) {
 	weights <- matrix(1, nrow=n, ncol=1)
@@ -442,7 +442,7 @@ if (TRUE) {
 	Wnz <- matrix(0, nrow=length(nz), ncol=max(Nnz))
 	sapply(1:length(nz), function(i){ Wnz[i,1:Nnz[i]] <<- weights[i,nz[[i]]] })
 
-	Niter <- 100000
+	Niter <- 10
 
 	samples <- matrix(0, nrow=Niter, ncol=fitL*(k+n.off))
 
@@ -465,6 +465,8 @@ fit <- sim_fit(L, 0.20, 10)
 #fit2 <- sim_fit(10, 0.1, 25)
 #fit3 <- sim_fit(15, 0.1, 25)
 #fit4 <- sim_fit(20, 0.1, 25)
+
+done
 
 #} else {
 

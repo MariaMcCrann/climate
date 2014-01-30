@@ -39,6 +39,8 @@ public:
 
 	void fillR_i(int irow, const double *diag, const double *offd);
 
+	int num_theta() { return(mData->L*mNPerL); }
+
 private:
 	virtual bool obs_info(const double *theta, double *gr);
 
@@ -46,10 +48,10 @@ private:
 	const Data  *mData;
 	int          mKTri;     // number of upper triangular elements
 	int          mNPerL;    // number of params for each basis function
-	int          mNParams;  // total number of params
+	int          mNparams;  // total number of params
 	double      *mR_i;      // [k,k] covariance
 	double      *mInvR_i;   // [k,k] inverse covariance
-	double      *mObsInfo;  // [mNParams,mNParams] observed Fisher information
+	double      *mObsInfo;  // [mNparams,mNparams] observed Fisher information
 };
 
 ModelSplineCov::ModelSplineCov(const Prior *prior, const Data *data) {
@@ -58,7 +60,7 @@ ModelSplineCov::ModelSplineCov(const Prior *prior, const Data *data) {
 
 	mKTri = mData->k*(mData->k-1)/2;
 	mNPerL = mData->k+mKTri;
-	mNParams = mData->L*mNPerL;
+	mNparams = mData->L*mNPerL;
 
 	mR_i = (double *)malloc(sizeof(double)*mData->k*mData->k);
 	for (int i = 0; i < mData->k*mData->k; i++) mR_i[i] = 0;
@@ -66,8 +68,8 @@ ModelSplineCov::ModelSplineCov(const Prior *prior, const Data *data) {
 	mInvR_i = (double *)malloc(sizeof(double)*mData->k*mData->k);
 	for (int i = 0; i < mData->k*mData->k; i++) mInvR_i[i] = 0;
 
-	mObsInfo = (double *)malloc(sizeof(double)*mNParams*mNParams);
-	for (int i = 0; i < mNParams*mNParams; i++) mObsInfo[i] = 0;
+	mObsInfo = (double *)malloc(sizeof(double)*mNparams*mNparams);
+	for (int i = 0; i < mNparams*mNparams; i++) mObsInfo[i] = 0;
 }
 
 ModelSplineCov::~ModelSplineCov() {
@@ -77,7 +79,7 @@ ModelSplineCov::~ModelSplineCov() {
 }
 
 int ModelSplineCov::num_params() const {
-	return(mNParams);
+	return(mNparams);
 }
 
 void ModelSplineCov::fillR_i(int irow, const double *diag, const double *offd) {
@@ -112,25 +114,25 @@ void ModelSplineCov::fillR_i(int irow, const double *diag, const double *offd) {
 
 bool ModelSplineCov::get_obs_info(const double *theta, double *info) {
 	int i,j;
-	double grad[mNParams*mNParams];
+	double grad[mNparams*mNparams];
 
 	// get fisher info
 	obs_info(theta, grad);
 
 	// add prior piece for diagonals
-	for (i = 0; i < mNParams; i++) {
-		mObsInfo[i + i*mNParams] += 1/mPrior->var;
+	for (i = 0; i < mNparams; i++) {
+		mObsInfo[i + i*mNparams] += 1/mPrior->var;
 	}
 
 	// invert info
-	if (chol2inv(mNParams, mObsInfo) != 0) return(false);
+	if (chol2inv(mNparams, mObsInfo) != 0) return(false);
 
 	// factorize covariance
-	if (chol(mNParams, mObsInfo) != 0) return(false);
+	if (chol(mNparams, mObsInfo) != 0) return(false);
 
-	for (i = 0; i < mNParams; i++) {
-		for (j = i; j < mNParams; j++) {
-			info[i + j*mNParams] = mObsInfo[i + j*mNParams];
+	for (i = 0; i < mNparams; i++) {
+		for (j = i; j < mNparams; j++) {
+			info[i + j*mNparams] = mObsInfo[i + j*mNparams];
 		}
 	}
 
@@ -142,21 +144,21 @@ bool ModelSplineCov::obs_info(const double *theta, double *gr) {
 	int i,j;
 
 	// initialize observed info
-	for (i = 0; i < mNParams*mNParams; i++) mObsInfo[i] = 0;
+	for (i = 0; i < mNparams*mNparams; i++) mObsInfo[i] = 0;
 
 	// initialize gradient
-	for (i = 0; i < mNParams; i++) gr[i] = 0;
+	for (i = 0; i < mNparams; i++) gr[i] = 0;
 
-	double grad[mNParams];
+	double grad[mNparams];
 	for (irow = 0; irow < mData->n; irow++) {
 		grad_lk(theta, grad, irow);
 
 		// add to info
-		for (i = 0; i < mNParams; i++) {
+		for (i = 0; i < mNparams; i++) {
 			gr[i] += grad[i];
 
-			for (j = i; j < mNParams; j++) {
-				mObsInfo[i + j*mNParams] += grad[i]*grad[j];
+			for (j = i; j < mNparams; j++) {
+				mObsInfo[i + j*mNparams] += grad[i]*grad[j];
 			}
 		}
 	}
@@ -266,7 +268,7 @@ for (k1 = 0; k1 < mData->k; k1++) {
 			pri += pow(theta[param], 2);
 		} else {
 			// add for all parameters
-			for (i = 0; i < mNParams; i++) {
+			for (i = 0; i < mNparams; i++) {
 				pri += pow(theta[i],2);
 			}
 		}
@@ -316,12 +318,12 @@ bool ModelSplineCov::grad_lk(const double *theta, double *grad, int row) {
 		// use a specific row only from likelihood
 		row_l = row;
 		row_u = row+1;
-		for (i = 0; i < mNParams; i++) {
+		for (i = 0; i < mNparams; i++) {
 			grad[i] = 0;
 		}
 	} else {
 		// start with prior component
-		for (i = 0; i < mNParams; i++) {
+		for (i = 0; i < mNparams; i++) {
 			grad[i] = -theta[i]/mPrior->var;
 		}
 	}
@@ -428,27 +430,27 @@ for (int a = 0; a < mData->k; a++) { for (int b = 0; b < mData->k; b++) { MSG("%
 
 bool ModelSplineCov::scales(const double *theta, double *s) {
 	int i;
-	double grad[mNParams];
+	double grad[mNparams];
 
 	// use observed info for scales
 	obs_info(theta, grad);
 
 	// add prior piece for diagonals
-	for (i = 0; i < mNParams; i++) {
-		mObsInfo[i + i*mNParams] += 1/mPrior->var;
+	for (i = 0; i < mNparams; i++) {
+		mObsInfo[i + i*mNparams] += 1/mPrior->var;
 	}
 
 	// invert info
-	if (chol2inv(mNParams, mObsInfo) != 0) return(false);
+	if (chol2inv(mNparams, mObsInfo) != 0) return(false);
 
 	// set scales
-	for (i = 0; i < mNParams; i++) {
-		s[i] = sqrt(mObsInfo[i + i*mNParams]);
+	for (i = 0; i < mNparams; i++) {
+		s[i] = sqrt(mObsInfo[i + i*mNparams]);
 	}
 
 /*
 	// adjust scales for steep gradient
-	for (i = 0; i < mNParams; i++) {
+	for (i = 0; i < mNparams; i++) {
 		if (s[i] > 1) { s[i] = 1; }
 
 		if (s[i]*abs(grad[i]) > 0.5) {
@@ -456,6 +458,91 @@ bool ModelSplineCov::scales(const double *theta, double *s) {
 		}
 	}
 */
+
+	return(true);
+}
+
+// do the sampling for this model
+class SplineCovSampler {
+public:
+	SplineCovSampler(ModelSplineCov *m);
+	~SplineCovSampler();
+
+	//MH *sampler = new MH(m, (const double *)inits, samples, deviance);
+	//sampler->sample(*Niter, *thin, *step_e, true, *verbose);
+	bool sample(double *samples, int niter, const double *inits, double e, int nburn=0, bool verbose=false);
+
+private:
+	ModelSplineCov *mModel;
+	double *mPos;
+	double *mPosCur;
+	int mIter;
+	int mNparams;
+	int mNtheta;
+
+	MHSingle **mSamplerTheta;
+};
+
+SplineCovSampler::SplineCovSampler(ModelSplineCov *m) {
+	mModel   = m;
+	mNparams = m->num_params();
+	mNtheta  = m->num_theta();
+
+	mPos = NULL;
+	mPosCur = NULL;
+}
+
+SplineCovSampler::~SplineCovSampler() {
+	free(mPos);
+}
+
+bool SplineCovSampler::sample(double *samples, int niter, const double *inits, double e, int nburn, bool verbose) {
+	int iter;
+	int i,p;
+	double curLK,curLLik;
+	bool burn = true;
+
+	// allocate space
+	free(mPos);
+	mPos = (double *)malloc(sizeof(double)*mNparams);
+	free(mPosCur);
+	mPosCur = (double *)malloc(sizeof(double)*mNparams);
+
+	// create samples for theta
+	mSamplerTheta = new MHSingle *[mNtheta];
+	for (p = 0; p < mNtheta; p++) {
+		mSamplerTheta[p] = new MHSingle(mModel, p, inits[p], e);
+	}
+
+	// set inits
+	for (i = 0; i < mNparams; i++) mPos[i] = mPosCur[i] = inits[i];
+
+	// get initial lik
+	mModel->log_kernel(mPos, &curLK, &curLLik);
+
+	for (iter = 0; iter < niter; iter++) {
+		if (nburn < iter) burn=true;
+		else              burn=false;
+
+		// update theta
+		for (p = 0; p < mNtheta; p++) {
+			mSamplerTheta[p]->sample(mPos, mPosCur, &curLK, &curLLik, burn, verbose);
+		}
+
+		// save samples
+		for (i = 0; i < mNparams; i++) samples[iter + i*niter] = mPosCur[i];
+
+		if (verbose) MSG("Done with iter=%d\n", iter+1);
+
+#ifndef MATHLIB_STANDALONE
+		R_CheckUserInterrupt();
+#endif
+	}
+
+	for (p = 0; p < mNtheta; p++) {
+		delete mSamplerTheta[p];
+	}
+	delete mSamplerTheta;
 
 	return(true);
 }
@@ -493,7 +580,7 @@ void spline_cov_fit(
 	model_data->Wnz = (const double *)Wnz;
 
 	// model
-	Model *m = new ModelSplineCov((const ModelSplineCov::Prior *)model_prior, (const ModelSplineCov::Data *)model_data);
+	ModelSplineCov *m = new ModelSplineCov((const ModelSplineCov::Prior *)model_prior, (const ModelSplineCov::Data *)model_data);
 
 /*
 	double lp;
@@ -516,8 +603,13 @@ void spline_cov_fit(
 	sampler->sample(*Niter, *step_e, *step_L, *verbose);
 */
 
+/*
 	MH *sampler = new MH(m, (const double *)inits, samples, deviance);
 	sampler->sample(*Niter, *thin, *step_e, true, *verbose);
+*/
+
+	SplineCovSampler *sampler = new SplineCovSampler(m);
+	sampler->sample(samples, *Niter, (const double *)inits, *step_e, floor(*Niter/2), *verbose);
 
 	delete sampler;
 	delete m;

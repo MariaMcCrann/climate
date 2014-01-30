@@ -193,7 +193,7 @@ if (exists("WHICH_CDAT") && exists("THE_L")) {
 	step_e <- (2.38^2)/(THE_L*(data$k+data$k*(data$k-1)/2))
 
 	cat("Running fit\n")
-	fit <- do_fit(data=data, Niter=Niter, Nburn=Nburn, step_e=step_e, step_L=step_L, thin=thin, starts=inits)
+	#fit <- do_fit(data=data, Niter=Niter, Nburn=Nburn, step_e=step_e, step_L=step_L, thin=thin, starts=inits)
 	#print(spline_cov_lk(data, inits))
 }
 
