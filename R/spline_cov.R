@@ -16,7 +16,7 @@
 		step_e=as.double(step_e), step_L=as.integer(step_L), thin=as.integer(thin),
 		inits=as.double(inits),
 		Niter=as.integer(Niter),
-		samples=as.double(matrix(0, nrow=Nsamples, ncol=data$L*(data$k + data$k*(data$k-1)/2))),
+		samples=as.double(matrix(0, nrow=Nsamples, ncol=data$L*(data$k + data$k*(data$k-1)/2)+2*(data$k+data$k*(data$k-1)/2))),
 		deviance=as.double(matrix(0, nrow=Nsamples, ncol=1)),
 		verbose=as.logical(verbose),
 	NAOK=TRUE)

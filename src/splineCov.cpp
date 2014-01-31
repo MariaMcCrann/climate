@@ -9,20 +9,38 @@
 #include <R_ext/Lapack.h>
 #include <Rmath.h>
 
+// Specifies covariance over time model:
+//
+//     y_i   ind N(0, Sigma_i)
+// theta_jkl ind N(mu_jk, tau_jk^2)
+//    mu_jk  iid N(0, mu_sd^2)
+//   tau_jk  iid InvGamma(tau_alpha, tau_beta)
+//
+// - Sigma_i = R_i'R_i
+// - R_i,jj  = exp(sum_l w_i,l theta_jjl)
+// - R_i,jk  = sum_l w_i,l theta_jkl        j < k
 class ModelSplineCov : public Model {
+	friend class SplineCovSampler;
 public:
 	class Prior {
 	public:
-		double sd;   // prior SD of spline coefficients
+		double mu_sd;
+		double mu_var;
+
+		double tau_alpha;
+		double tau_beta;
+
+// old; not used anymore
+		double sd;
 		double var;
 	};
 
 	class Data {
 	public:
-		int n;                       // number of observations
-		int k;                       // number of sources
+		int           n;             // number of observations
+		int           k;             // number of sources
 		const double *y;             // [n,k] observations
-		int L;                       // number of basis functions
+		int           L;             // number of basis functions
 		const int    *Nnz;           // [n] number of non-zero weights for this obs
 		const int    *Mnz;           // [n,4] matrix of the non-zero indices
 		const double *Wnz;           // [n,4] matrix of the non-zero weights
@@ -39,15 +57,16 @@ public:
 
 	void fillR_i(int irow, const double *diag, const double *offd);
 
-	int num_theta() { return(mData->L*mNPerL); }
+	int num_theta() { return(mNtheta); }
 
-private:
+protected:
 	virtual bool obs_info(const double *theta, double *gr);
 
 	const Prior *mPrior;
 	const Data  *mData;
 	int          mKTri;     // number of upper triangular elements
 	int          mNPerL;    // number of params for each basis function
+	int          mNtheta;   // number of theta's
 	int          mNparams;  // total number of params
 	double      *mR_i;      // [k,k] covariance
 	double      *mInvR_i;   // [k,k] inverse covariance
@@ -58,9 +77,10 @@ ModelSplineCov::ModelSplineCov(const Prior *prior, const Data *data) {
 	mPrior = prior;
 	mData = data;
 
-	mKTri = mData->k*(mData->k-1)/2;
-	mNPerL = mData->k+mKTri;
-	mNparams = mData->L*mNPerL;
+	mKTri    = mData->k*(mData->k-1)/2;
+	mNPerL   = mData->k+mKTri;
+	mNtheta  = mData->L*mNPerL;
+	mNparams = mNtheta + 2*mData->k + 2*mKTri; // counts theta, mu, and tau
 
 	mR_i = (double *)malloc(sizeof(double)*mData->k*mData->k);
 	for (int i = 0; i < mData->k*mData->k; i++) mR_i[i] = 0;
@@ -175,8 +195,12 @@ bool ModelSplineCov::log_kernel(const double *theta, double *lk, double *llik, d
 	bool do_comp;
 	int param_col;
 
-	const double *diag = theta;
-	const double *offd = theta + mData->k*mData->L;
+	const double *diag  = theta;
+	const double *offd  = diag  + mData->k*mData->L;
+	const double *mu_d  = offd  + mKTri*mData->L;
+	const double *mu_o  = mu_d  + mData->k;
+	const double *tau_d = mu_o  + mKTri;
+	const double *tau_o = tau_d + mData->k;
 
 	char   cside = 'L';
 	char   cuplo = 'U';
@@ -263,16 +287,27 @@ for (k1 = 0; k1 < mData->k; k1++) {
 
 
 	if (do_pri) { // prior
+		// prior is: p(theta, mu, tau)
 		if (param >= 0) {
+MSG("Complete prior for single param\n");
 			// only add for this parameter
-			pri += pow(theta[param], 2);
+			//pri += pow(theta[param], 2);
+			//pri *= -0.5/mPrior->var;
 		} else {
-			// add for all parameters
-			for (i = 0; i < mNparams; i++) {
-				pri += pow(theta[i],2);
+			// add for theta
+			for (j = 0; j < mData->L; j++) {
+				for (i = 0; i < mData->k; i++) pri += -0.5*pow(diag[i + j*mData->k]-mu_d[i],2)/tau_d[i];
+				for (i = 0; i < mKTri;    i++) pri += -0.5*pow(offd[i + j*mKTri   ]-mu_o[i],2)/tau_o[i];
 			}
+
+			// add for mu
+			for (i = 0; i < mData->k; i++) pri += -0.5*pow(mu_d[i],2)/mPrior->mu_var;
+			for (i = 0; i < mKTri;    i++) pri += -0.5*pow(mu_o[i],2)/mPrior->mu_var;
+
+			// add for tau
+			for (i = 0; i < mData->k; i++) pri += -(mPrior->tau_alpha+1)*log(tau_d[i]) -mPrior->tau_beta/tau_d[i];
+			for (i = 0; i < mKTri;    i++) pri += -(mPrior->tau_alpha+1)*log(tau_o[i]) -mPrior->tau_beta/tau_o[i];
 		}
-		pri *= -0.5/mPrior->var;
 	}
 
 	// add likelihood and prior components
@@ -502,14 +537,40 @@ bool SplineCovSampler::sample(double *samples, int niter, const double *inits, d
 	double curLK,curLLik;
 	bool burn = true;
 
+	double *diag,*diag_cur;
+	double *offd,*offd_cur;
+	double *mu_d,*mu_d_cur;
+	double *mu_o,*mu_o_cur;
+	double *tau_d,*tau_d_cur;
+	double *tau_o,*tau_o_cur;
+
+	// for updates
+	double theta_mu = 0;
+	double update_mu = 0;
+	double update_sd = 0;
+
 	// allocate space
 	free(mPos);
 	mPos = (double *)malloc(sizeof(double)*mNparams);
 	free(mPosCur);
 	mPosCur = (double *)malloc(sizeof(double)*mNparams);
 
+	diag  = mPos;
+	offd  = diag  + mModel->mData->k*mModel->mData->L;
+	mu_d  = offd  + mModel->mKTri*mModel->mData->L;
+	mu_o  = mu_d  + mModel->mData->k;
+	tau_d = mu_o  + mModel->mKTri;
+	tau_o = tau_d + mModel->mData->k;
+
+	diag_cur  = mPosCur;
+	offd_cur  = diag_cur  + mModel->mData->k*mModel->mData->L;
+	mu_d_cur  = offd_cur  + mModel->mKTri*mModel->mData->L;
+	mu_o_cur  = mu_d_cur  + mModel->mData->k;
+	tau_d_cur = mu_o_cur  + mModel->mKTri;
+	tau_o_cur = tau_d_cur + mModel->mData->k;
+
 	// create samples for theta
-	mSamplerTheta = new MHSingle *[mNtheta];
+	mSamplerTheta = new MHSingle*[mNtheta];
 	for (p = 0; p < mNtheta; p++) {
 		mSamplerTheta[p] = new MHSingle(mModel, p, inits[p], e);
 	}
@@ -519,6 +580,7 @@ bool SplineCovSampler::sample(double *samples, int niter, const double *inits, d
 
 	// get initial lik
 	mModel->log_kernel(mPos, &curLK, &curLLik);
+//MSG("%.4f, %.4f\n", curLK, curLLik); niter = 0;
 
 	for (iter = 0; iter < niter; iter++) {
 		if (nburn < iter) burn=true;
@@ -529,10 +591,81 @@ bool SplineCovSampler::sample(double *samples, int niter, const double *inits, d
 			mSamplerTheta[p]->sample(mPos, mPosCur, &curLK, &curLLik, burn, verbose);
 		}
 
+		// update mu
+			// ... diagonal
+			for (p = 0; p < mModel->mData->k; p++) {
+				// mean of theta_jkl
+				theta_mu = 0;
+				for (i = 0; i < mModel->mData->L; i++) {
+					theta_mu += diag_cur[p + i*mModel->mData->k];
+				}
+				theta_mu /= mModel->mData->L;
+
+				// update prameters
+				update_sd = 1/(mModel->mData->L/tau_d_cur[p] + 1/mModel->mPrior->mu_var);
+				update_mu = (mModel->mData->L*theta_mu/tau_d_cur[p])*update_sd;
+				update_sd = sqrt(update_sd);
+
+				GetRNGstate();
+				mu_d_cur[p] = rnorm(update_mu, update_sd);
+				PutRNGstate();
+			}
+			// ... upper triangle
+			for (p = 0; p < mModel->mKTri; p++) {
+				// mean of theta_jkl
+				theta_mu = 0;
+				for (i = 0; i < mModel->mData->L; i++) {
+					theta_mu += offd_cur[p + i*mModel->mData->k];
+				}
+				theta_mu /= mModel->mData->L;
+
+				// update prameters
+				update_sd = 1/(mModel->mData->L/tau_o_cur[p] + 1/mModel->mPrior->mu_var);
+				update_mu = (mModel->mData->L*theta_mu/tau_o_cur[p])*update_sd;
+				update_sd = sqrt(update_sd);
+
+				GetRNGstate();
+				mu_o_cur[p] = rnorm(update_mu, update_sd);
+				PutRNGstate();
+			}
+
+//> a<-3;b<-3;b/(a-1);b^2/( (a-1)^2*(a-2) );v<-1/rgamma(500000,shape=a,scale=1/b);mean(v);var(v);
+		// update tau
+			// ... diagonal
+			for (p = 0; p < mModel->mData->k; p++) {
+				// sum of squared differences
+				theta_mu = 0;
+				for (i = 0; i < mModel->mData->L; i++) {
+					theta_mu += pow(diag_cur[p + i*mModel->mData->k] - mu_d[p], 2.0);
+				}
+
+				// update prameters
+				update_mu = (mModel->mPrior->tau_alpha + 0.5*mModel->mData->L);
+				update_sd = 1/(mModel->mPrior->tau_beta + 0.5*theta_mu);
+
+				GetRNGstate();
+				tau_d_cur[p] = 1/rgamma(update_mu, update_sd);
+				PutRNGstate();
+			}
+			// ... upper triangle
+			for (p = 0; p < mModel->mKTri; p++) {
+				// sum of squared differences
+				theta_mu = 0;
+				for (i = 0; i < mModel->mData->L; i++) {
+					theta_mu += pow(offd_cur[p + i*mModel->mData->k] - mu_o[p], 2.0);
+				}
+
+				// update prameters
+				update_mu = (mModel->mPrior->tau_alpha + 0.5*mModel->mData->L);
+				update_sd = 1/(mModel->mPrior->tau_beta + 0.5*theta_mu);
+
+				GetRNGstate();
+				tau_o_cur[p] = 1/rgamma(update_mu, update_sd);
+				PutRNGstate();
+			}
+
 		// save samples
 		for (i = 0; i < mNparams; i++) samples[iter + i*niter] = mPosCur[i];
-
-		if (verbose) MSG("Done with iter=%d\n", iter+1);
 
 #ifndef MATHLIB_STANDALONE
 		R_CheckUserInterrupt();
@@ -566,8 +699,12 @@ void spline_cov_fit(
 
 	// prior
 	ModelSplineCov::Prior *model_prior = new ModelSplineCov::Prior();
-	model_prior->sd  = prior[0];
-	model_prior->var = pow(prior[0], 2);
+	//model_prior->sd  = prior[0];
+	//model_prior->var = pow(prior[0], 2);
+	model_prior->mu_sd  = prior[0];
+	model_prior->mu_var = pow(prior[0], 2.0);
+	model_prior->tau_alpha = prior[1];
+	model_prior->tau_beta  = prior[2];
 
 	// data
 	ModelSplineCov::Data *model_data = new ModelSplineCov::Data();
@@ -633,8 +770,12 @@ void spline_cov_lk(
 
 	// prior
 	ModelSplineCov::Prior *model_prior = new ModelSplineCov::Prior();
-	model_prior->sd  = prior[0];
-	model_prior->var = pow(prior[0], 2);
+	//model_prior->sd  = prior[0];
+	//model_prior->var = pow(prior[0], 2);
+	model_prior->mu_sd  = prior[0];
+	model_prior->mu_var = pow(prior[0], 2.0);
+	model_prior->tau_alpha = prior[1];
+	model_prior->tau_beta  = prior[2];
 
 	// data
 	ModelSplineCov::Data *model_data = new ModelSplineCov::Data();
@@ -672,8 +813,12 @@ void spline_cov_gr(
 
 	// prior
 	ModelSplineCov::Prior *model_prior = new ModelSplineCov::Prior();
-	model_prior->sd  = prior[0];
-	model_prior->var = pow(prior[0], 2);
+	//model_prior->sd  = prior[0];
+	//model_prior->var = pow(prior[0], 2);
+	model_prior->mu_sd  = prior[0];
+	model_prior->mu_var = pow(prior[0], 2.0);
+	model_prior->tau_alpha = prior[1];
+	model_prior->tau_beta  = prior[2];
 
 	// data
 	ModelSplineCov::Data *model_data = new ModelSplineCov::Data();
@@ -711,8 +856,12 @@ void spline_cov_scales(
 
 	// prior
 	ModelSplineCov::Prior *model_prior = new ModelSplineCov::Prior();
-	model_prior->sd  = prior[0];
-	model_prior->var = pow(prior[0], 2);
+	//model_prior->sd  = prior[0];
+	//model_prior->var = pow(prior[0], 2);
+	model_prior->mu_sd  = prior[0];
+	model_prior->mu_var = pow(prior[0], 2.0);
+	model_prior->tau_alpha = prior[1];
+	model_prior->tau_beta  = prior[2];
 
 	// data
 	ModelSplineCov::Data *model_data = new ModelSplineCov::Data();

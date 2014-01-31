@@ -442,13 +442,18 @@ if (TRUE) {
 	Wnz <- matrix(0, nrow=length(nz), ncol=max(Nnz))
 	sapply(1:length(nz), function(i){ Wnz[i,1:Nnz[i]] <<- weights[i,nz[[i]]] })
 
-	Niter <- 10
+	Niter <- 1000
 
-	samples <- matrix(0, nrow=Niter, ncol=fitL*(k+n.off))
+	#samples <- matrix(0, nrow=Niter, ncol=fitL*(k+n.off)+2*(k+n.off))
 
-	inits <- v1; #rep(0, fitL*(k+n.off))
+	inits <- c(v1,
+		apply(alpha.d,1,mean), apply(alpha.o,1,mean),
+		apply(alpha.d,1,var), apply(alpha.o,1,var)
+	)
+#print(round(inits,3)); done
+
 	t1 <- proc.time()
-	fit <- spline_cov(data=list(prior=prior.theta_sd,
+	fit <- spline_cov(data=list(prior=c(1, 0.001, 0.001), #prior.theta_sd,
 		n=n, k=k, y=y, L=fitL, Nnz=Nnz, Mnz=Mnz-1, Wnz=Wnz),
 	  step_e=step_e, step_L=step_L, inits=inits, Niter=Niter, thin=1, verbose=TRUE)
 	print(proc.time()-t1)
@@ -460,7 +465,7 @@ if (TRUE) {
 }
 
 set.seed(1983)
-fit <- sim_fit(L, 0.20, 10)
+fit <- sim_fit(L, 0.2, 10)
 #fit1 <- sim_fit(5, 0.1, 25)
 #fit2 <- sim_fit(10, 0.1, 25)
 #fit3 <- sim_fit(15, 0.1, 25)

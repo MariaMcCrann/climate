@@ -50,8 +50,10 @@ if (!("cdata" %in% ls())) {
 		ests.o[i,] <- coef(fit)
 	}
 
-
-	c(as.vector(ests.d), as.vector(ests.o))
+	c(as.vector(ests.d), as.vector(ests.o),
+		apply(ests.d,1,mean), apply(ests.o,1,mean),
+		apply(ests.d,1,var), apply(ests.o,1,var)
+	)
 }
 
 # weights at specific values of f
