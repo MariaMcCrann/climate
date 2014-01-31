@@ -505,7 +505,7 @@ public:
 
 	//MH *sampler = new MH(m, (const double *)inits, samples, deviance);
 	//sampler->sample(*Niter, *thin, *step_e, true, *verbose);
-	bool sample(double *samples, int niter, const double *inits, double e, int nburn=0, bool verbose=false);
+	bool sample(double *samples, double *deviance, int niter, const double *inits, double e, int nburn=0, bool verbose=false);
 
 private:
 	ModelSplineCov *mModel;
@@ -531,7 +531,8 @@ SplineCovSampler::~SplineCovSampler() {
 	free(mPos);
 }
 
-bool SplineCovSampler::sample(double *samples, int niter, const double *inits, double e, int nburn, bool verbose) {
+bool SplineCovSampler::sample(double *samples, double *deviance,
+                              int niter, const double *inits, double e, int nburn, bool verbose) {
 	int iter;
 	int i,p;
 	double curLK,curLLik;
@@ -667,6 +668,17 @@ bool SplineCovSampler::sample(double *samples, int niter, const double *inits, d
 		// save samples
 		for (i = 0; i < mNparams; i++) samples[iter + i*niter] = mPosCur[i];
 
+		// get deviance
+		mModel->log_kernel(mPosCur, &curLK, &curLLik);
+		deviance[iter] = -2*curLLik;
+
+		if (verbose && (iter+1) % 1 == 0) {
+			MSG("[%d,%.2f]:", iter+1, curLK);
+			for (i = 0; i < 5; i++)
+				MSG(" %.2f/%.2f/%.4f", mSamplerTheta[p]->get_local_accept(), mSamplerTheta[p]->get_accept(), mSamplerTheta[p]->get_eps());
+			MSG("\n");
+		}
+
 #ifndef MATHLIB_STANDALONE
 		R_CheckUserInterrupt();
 #endif
@@ -746,7 +758,7 @@ void spline_cov_fit(
 */
 
 	SplineCovSampler *sampler = new SplineCovSampler(m);
-	sampler->sample(samples, *Niter, (const double *)inits, *step_e, floor(*Niter/2), *verbose);
+	sampler->sample(samples, deviance, *Niter, (const double *)inits, *step_e, floor(*Niter/2), *verbose);
 
 	delete sampler;
 	delete m;

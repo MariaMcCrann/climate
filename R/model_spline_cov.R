@@ -170,7 +170,7 @@ if (exists("WHICH_CDAT") && exists("THE_L")) {
 
 	thin <- round(thin)
 
-	Niter <- 1000
+	Niter <- 2500
 	thin <- 1
 
 	Nsamples <- round(Niter/thin)
