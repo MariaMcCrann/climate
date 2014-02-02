@@ -57,7 +57,7 @@ k  <- ncol(zstar)
 	Wnz <- matrix(0, nrow=length(nz), ncol=max(Nnz))
 	sapply(1:length(nz), function(i){ Wnz[i,1:Nnz[i]] <<- weights[i,nz[[i]]] })
 
-	data <- list(prior=c(1, 0.001, 0.001),
+	data <- list(prior=c(100, 0.001, 0.001),
 		n=n, k=k, y=zstar, f=f,
 		L=L, weights=weights,
 		Nnz=Nnz, Mnz=Mnz-1, Wnz=Wnz,
