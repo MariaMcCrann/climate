@@ -584,7 +584,7 @@ bool SplineCovSampler::sample(double *samples, double *deviance,
 //MSG("%.4f, %.4f\n", curLK, curLLik); niter = 0;
 
 	for (iter = 0; iter < niter; iter++) {
-		if (nburn < iter) burn=true;
+		if (iter < nburn) burn=true;
 		else              burn=false;
 
 		// update theta
@@ -674,7 +674,7 @@ bool SplineCovSampler::sample(double *samples, double *deviance,
 
 		if (verbose && (iter+1) % 1 == 0) {
 			MSG("[%d,%.2f]:", iter+1, curLK);
-			for (i = 0; i < 5; i++)
+			for (p = 0; p < 5; p++)
 				MSG(" %.2f/%.2f/%.4f", mSamplerTheta[p]->get_local_accept(), mSamplerTheta[p]->get_accept(), mSamplerTheta[p]->get_eps());
 			MSG("\n");
 		}
