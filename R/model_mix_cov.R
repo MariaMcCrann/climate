@@ -67,7 +67,7 @@ if (l==1) {
 	#print( a-data$k-1 )
 	#print(round(S_alpha,3))
 	#print(a)
-	print( cov2cor( round(B/(a-data$k-1),3) ) )
+	#print( cov2cor( round(B/(a-data$k-1),3) ) )
 }
 			Omega[l,,] <<- riwish(a, B)
 		})
@@ -108,7 +108,11 @@ if (TRUE) {
 			-sum(log(diag(cholS))) -0.5*t(data$y[i,]) %*% invS %*% (data$y[i,])
 		}))
 
-		if (iter %% 10==0) print(iter)
+		if (iter %% 10==0) {
+			print(iter)
+			print(ll)
+			print( round( cov2cor( Omega[1,,] ), 3) )
+		}
 
 		keep.Omega[iter,,,] <- Omega
 		keep.ll[iter]       <- ll
@@ -116,9 +120,6 @@ if (TRUE) {
 
 	list(Omega=keep.Omega, ll=keep.ll)
 }
-
-
-
 
 if (FALSE) {
 	# let's subset the data...
@@ -253,6 +254,7 @@ print(mOmegas[2,,])
 	# save fit
 	fname <- paste0("mcL",data$L,"_",WHICH_CDAT,".RData")
 	#save(data, samples, init, DIC, pD, Nburn, thin, Niter, Nsamples, file=paste0("fitsums/fitsum_",fname))
+	save(data, mOmegas, Omegas, DIC, pD, Nburn, thin, Niter, file=paste0("fitsums/fitsum_",fname))
 }
 
 	#list(L=data$L, samples=samples, init=init, DIC=DIC, pD=pD, Nburn=Nburn, thin=thin, Niter=Niter, Nsamples=Nsamples)
@@ -262,7 +264,7 @@ print(mOmegas[2,,])
 
 # normal fit
 if (exists("WHICH_CDAT") && exists("THE_L")) {
-	Niter <- 500
+	Niter <- 1000
 	thin <- 1
 
 	Nsamples <- round(Niter/thin)
