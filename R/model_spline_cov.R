@@ -37,7 +37,8 @@ k  <- ncol(zstar)
 
 	# create basis functions
 	#Bbasis  <- create.bspline.basis(c(min(f),max(f)),norder=4,nbasis=L)
-	Bbasis  <- create.bspline.basis(range.f,norder=4,nbasis=L)
+	#Bbasis  <- create.bspline.basis(range.f,norder=4,nbasis=L)
+	Bbasis  <- create.bspline.basis(range.f,norder=2,nbasis=L)
 	knots   <- knots(Bbasis)
 	weights <- getbasismatrix(f, Bbasis, nderiv=0)
 	uf      <- quantile(f, seq(0,1,length=100))
