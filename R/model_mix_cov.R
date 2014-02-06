@@ -63,13 +63,16 @@ if (TRUE) {
 #print((prior$S + S_y + S_alpha)/(prior$nu + inL - data$k - 1))
 #print(cov2cor( (prior$S + S_y + S_alpha)/(prior$nu + inL - data$k - 1)))
 			a       <- prior$nu + inL
-			B       <- make.positive.definite(prior$S + S_y + S_alpha)
+			B       <- prior$S + S_y + S_alpha
 
 if (l==1) {
 	#print( a-data$k-1 )
 	#print(round(S_alpha,3))
 	#print(a)
 	#print( cov2cor( round(B/(a-data$k-1),3) ) )
+print(round(prior$S,3))
+print(round(S_y,3))
+print(round(S_alpha,3))
 }
 			Omega[l,,] <<- riwish(a, B)
 		})
@@ -152,8 +155,8 @@ k  <- ncol(zstar)
 	if (L < 4) { stop("B-splines require L > 3\n") }
 
 	# create basis functions
-	#Bbasis  <- create.bspline.basis(c(min(f),max(f)),norder=4,nbasis=L)
-	Bbasis  <- create.bspline.basis(range.f,norder=4,nbasis=L)
+	Bbasis  <- create.bspline.basis(c(min(f),max(f)),norder=4,nbasis=L)
+	#Bbasis  <- create.bspline.basis(range.f,norder=4,nbasis=L)
 	knots   <- knots(Bbasis)
 	weights <- getbasismatrix(f, Bbasis, nderiv=0)
 	uf      <- quantile(f, seq(0,1,length=100))
@@ -210,11 +213,11 @@ if (FALSE) {
 	Nsamples <- round(Niter/thin)
 
 	t1 <- proc.time()
-	fits <- mclapply(1:Nchains, mc.cores=Ncores,
-	#fits <- lapply(1:Nchains,
+	#fits <- mclapply(1:Nchains, mc.cores=Ncores,
+	fits <- lapply(1:Nchains,
 		function(i) {
 		set.seed(311 + i*Niter);
-		fit <- fit_mix(data=data, prior=list(nu=10, S=(10-k-1)*diag(k)), Niter=Niter)
+		fit <- fit_mix(data=data, prior=data$prior, Niter=Niter)
 	})
 	cat("Time to samples:\n")
 	print(proc.time()-t1)
