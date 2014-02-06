@@ -2,6 +2,7 @@ library(fda)
 library(multicore)
 library(MCMCpack)
 library(coda)
+library(corpcor)
 
 source("R/load_data2.R")
 source("R/smooth_corr.R")
@@ -62,7 +63,8 @@ if (TRUE) {
 #print((prior$S + S_y + S_alpha)/(prior$nu + inL - data$k - 1))
 #print(cov2cor( (prior$S + S_y + S_alpha)/(prior$nu + inL - data$k - 1)))
 			a       <- prior$nu + inL
-			B       <- prior$S + S_y + S_alpha
+			B       <- make.positive.definite(prior$S + S_y + S_alpha)
+
 if (l==1) {
 	#print( a-data$k-1 )
 	#print(round(S_alpha,3))
@@ -208,8 +210,8 @@ if (FALSE) {
 	Nsamples <- round(Niter/thin)
 
 	t1 <- proc.time()
-	fits <- mclapply(1:Nchains, mc.cores=Ncores,
-	#fits <- lapply(1:Nchains,
+	#fits <- mclapply(1:Nchains, mc.cores=Ncores,
+	fits <- lapply(1:Nchains,
 		function(i) {
 		set.seed(311 + i*Niter);
 		fit <- fit_mix(data=data, prior=list(nu=10, S=(10-k-1)*diag(k)), Niter=Niter)
