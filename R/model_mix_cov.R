@@ -19,7 +19,7 @@ source("R/smooth_corr.R")
 	Omega  <- array(NA, dim=c(data$L, data$k, data$k))
 	invOmega  <- array(NA, dim=c(data$L, data$k, data$k))
 
-if (TRUE) {
+if (TRUE && data$L > 1) {
 	# initialize alpha to be fraction of observed
 	sapply(1:data$n, function(i) {
 		sapply(which(data$w[i,] > 0), function(l) {
@@ -40,11 +40,13 @@ if (TRUE) {
 		# compute mean of each observation
 		sapply(1:data$n, function(i) {
 			mu[i,] <<- 0
-			sapply(which(data$w[i,] > 0), function(l) {
-				if (l != m_w[i]) {
-					mu[i,] <<- mu[i,] + rt_w[i,l] * alpha[i,l,]
-				}
-			})
+			if (data$L > 1) {
+				sapply(which(data$w[i,] > 0), function(l) {
+					if (l != m_w[i]) {
+						mu[i,] <<- mu[i,] + rt_w[i,l] * alpha[i,l,]
+					}
+				})
+			}
 		})
 
 if (TRUE) {
@@ -55,24 +57,29 @@ if (TRUE) {
 			inL     <- length(pos_w) + length(y_w)
 
 			S_y     <- Reduce('+', lapply(y_w,   function(i) { tcrossprod(data$y[i,]-mu[i,])/data$w[i,l] }))
-			S_alpha <- Reduce('+', lapply(pos_w, function(i) { tcrossprod(alpha[i,l,]) }))
+			a       <- prior$nu + inL
+			B       <- prior$S + S_y
+
+			if (data$L > 1) {
+				S_alpha <- Reduce('+', lapply(pos_w, function(i) { tcrossprod(alpha[i,l,]) }))
+				B <- B + S_alpha
+			}
+
 #print(S_y);print(solve(S_y));
 #print(S_alpha);print(solve(S_alpha));
 #print(solve(prior$S + S_y + S_alpha))
 #print((prior$S + S_y + S_alpha))
 #print((prior$S + S_y + S_alpha)/(prior$nu + inL - data$k - 1))
 #print(cov2cor( (prior$S + S_y + S_alpha)/(prior$nu + inL - data$k - 1)))
-			a       <- prior$nu + inL
-			B       <- prior$S + S_y + S_alpha
 
 if (l==1) {
 	#print( a-data$k-1 )
 	#print(round(S_alpha,3))
 	#print(a)
 	#print( cov2cor( round(B/(a-data$k-1),3) ) )
-print(round(prior$S,3))
-print(round(S_y,3))
-print(round(S_alpha,3))
+#print(round(prior$S,3))
+#print(round(S_y,3))
+#print(round(S_alpha,3))
 }
 			Omega[l,,] <<- riwish(a, B)
 		})
@@ -83,7 +90,7 @@ print(round(S_alpha,3))
 		})
 }
 
-if (TRUE) {
+if (TRUE && data$L > 1) {
 		# update alpha
 		sapply(1:data$L, function(l) {
 #F <- (data$w[i,l]/sigma2)*diag(data$k)
@@ -152,15 +159,21 @@ n  <- nrow(zstar)
 k  <- ncol(zstar)
 
 "get_data" <- function(L) {
-	if (L < 4) { stop("B-splines require L > 3\n") }
+	if (L < 4 && L != 1) { stop("B-splines require L > 3\n") }
 
-	# create basis functions
-	Bbasis  <- create.bspline.basis(c(min(f),max(f)),norder=4,nbasis=L)
-	#Bbasis  <- create.bspline.basis(range.f,norder=4,nbasis=L)
-	knots   <- knots(Bbasis)
-	weights <- getbasismatrix(f, Bbasis, nderiv=0)
 	uf      <- quantile(f, seq(0,1,length=100))
-	ufw     <- getbasismatrix(uf, Bbasis, nderiv=0)
+	if (L == 1) {
+		# use a single covariance matrix
+		weights <- matrix(1, nrow=length(f), ncol=1)
+		ufw <- matrix(1, nrow=length(uf), ncol=1)
+	} else {
+		# create basis functions
+		Bbasis  <- create.bspline.basis(c(min(f),max(f)),norder=4,nbasis=L)
+		#Bbasis  <- create.bspline.basis(range.f,norder=4,nbasis=L)
+		knots   <- knots(Bbasis)
+		weights <- getbasismatrix(f, Bbasis, nderiv=0)
+		ufw     <- getbasismatrix(uf, Bbasis, nderiv=0)
+	}
 
 	# capture which are non-zero
 	nz <- apply(weights, 1, function(x){ which(x!=0) })
