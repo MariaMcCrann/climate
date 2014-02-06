@@ -210,8 +210,8 @@ if (FALSE) {
 	Nsamples <- round(Niter/thin)
 
 	t1 <- proc.time()
-	#fits <- mclapply(1:Nchains, mc.cores=Ncores,
-	fits <- lapply(1:Nchains,
+	fits <- mclapply(1:Nchains, mc.cores=Ncores,
+	#fits <- lapply(1:Nchains,
 		function(i) {
 		set.seed(311 + i*Niter);
 		fit <- fit_mix(data=data, prior=list(nu=10, S=(10-k-1)*diag(k)), Niter=Niter)
