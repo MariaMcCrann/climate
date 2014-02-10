@@ -226,8 +226,8 @@ if (FALSE) {
 	Nsamples <- round(Niter/thin)
 
 	t1 <- proc.time()
-	#fits <- mclapply(1:Nchains, mc.cores=Ncores,
-	fits <- lapply(1:Nchains,
+	fits <- mclapply(1:Nchains, mc.cores=Ncores,
+	#fits <- lapply(1:Nchains,
 		function(i) {
 		set.seed(311 + i*Niter);
 		fit <- fit_mix(data=data, prior=data$prior, Niter=Niter)
@@ -249,15 +249,23 @@ if (TRUE) {
 
 	# posterior mean
 	mOmegas <- array(NA, dim=c(data$L, data$k, data$k))
-	sapply(1:data$L, function(l) {
-		sapply(1:data$k, function(k1) {
-			sapply(1:data$k, function(k2) {
-				mOmegas[l,k1,k2] <<- mean(c(Omegas[[1]][,l,k1,k2],Omegas[[2]][,l,k1,k2],Omegas[[3]][,l,k1,k2]))
+	if (data$L > 1) {
+		sapply(1:data$L, function(l) {
+			sapply(1:data$k, function(k1) {
+				sapply(1:data$k, function(k2) {
+					mOmegas[l,k1,k2] <<- mean(c(Omegas[[1]][,l,k1,k2],Omegas[[2]][,l,k1,k2],Omegas[[3]][,l,k1,k2]))
+				})
 			})
 		})
-	})
-print(mOmegas[1,,])
-print(mOmegas[2,,])
+print(round(mOmegas[1,,],3))
+print(round(mOmegas[2,,],3))
+	} else {
+		sapply(1:data$k, function(k1) {
+			sapply(1:data$k, function(k2) {
+				mOmegas[1,k1,k2] <<- mean(c(Omegas[[1]][,k1,k2],Omegas[[2]][,k1,k2],Omegas[[3]][,k1,k2]))
+			})
+		})
+	}
 
 	Dbar  <- mean(c(dev[[1]],dev[[2]],dev[[3]]))
 	Dtbar <- -2*sum(sapply(1:data$n, function(i) {
